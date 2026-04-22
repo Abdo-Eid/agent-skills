@@ -104,22 +104,18 @@
         "workingDirectory": "/workspace/skills/skills/docx",
         "workflowSource": "SKILL.md",
         "dependencies": {
-          "dotnet": [
-            "net8.0"
+          "node": [
+            "docx"
+          ],
+          "python": [
+            "defusedxml",
+            "lxml"
           ],
           "optional": [
             "pandoc",
-            "fonts"
+            "fonts",
+            "libreoffice"
           ]
-        },
-        "prebuild": {
-          "workingDirectory": "/workspace/skills/skills/docx/scripts/dotnet",
-          "restore": "dotnet restore DocxSkill.slnx",
-          "build": "dotnet build DocxSkill.slnx --no-restore"
-        },
-        "cli": {
-          "workingDirectory": "/workspace/skills/skills/docx",
-          "command": "dotnet run --project scripts/dotnet/DocxSkill.Cli --"
         },
         "outputFormats": [
           "docx"

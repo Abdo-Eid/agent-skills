@@ -22,4 +22,4 @@ Sandbox flows should resolve skills from this registry instead of cloning an ext
 - This repository is private and proprietary.
 - The first migration target is the set of document/runtime skills currently used in sandbox execution.
 - `registry/skills.json` is the initial machine-readable manifest for active runtime skills.
-- `docs/runtime-contract.md` documents the expected clone layout, manifest resolution flow, and `docx` prebuild contract.
+- `docs/runtime-contract.md` documents the expected clone layout, manifest resolution flow, and current `docx` runtime dependencies.

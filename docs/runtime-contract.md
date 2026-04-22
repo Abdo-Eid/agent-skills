@@ -56,28 +56,17 @@ mkdir -p /workspace && cd /workspace && git clone <your-private-repo-url> skills
 
 That produces the expected runtime root at `/workspace/skills`.
 
-## Prebuild Step For `docx`
+## Runtime Dependencies For `docx`
 
-The `docx` skill contains a .NET CLI that should be restored and built during template creation to avoid runtime compile latency.
+The `docx` skill no longer uses a .NET prebuild or CLI entry.
 
-Working directory:
+The current runtime is defined in `registry/skills.json` and expects:
 
-```text
-/workspace/skills/skills/docx/scripts/dotnet
-```
+- Node dependency: `docx`
+- Python dependencies: `defusedxml`, `lxml`
+- Optional tools: `pandoc`, `fonts`, `libreoffice`
 
-Commands:
-
-```bash
-dotnet restore DocxSkill.slnx
-dotnet build DocxSkill.slnx --no-restore
-```
-
-Runtime CLI entry:
-
-```bash
-dotnet run --project scripts/dotnet/DocxSkill.Cli --
-```
+The sandbox should provision those dependencies from the manifest rather than assuming a docx-specific build step.
 
 ## Runtime Clone Fallback
 
@@ -92,16 +81,15 @@ After cloning:
 1. load the manifest
 2. resolve the requested skill path
 3. read `SKILL.md`
-4. install any missing dependencies only if the template did not already provide them
-5. for `docx`, restore/build the .NET solution if the prebuilt artifacts are not present
+4. install any missing dependencies from the manifest only if the template did not already provide them
 
 ## Recommended Downstream Changes
 
-Downstream code should stop depending on hardcoded skill folder names and hardcoded CLI project paths.
+Downstream code should stop depending on hardcoded skill folder names and hardcoded docx runtime assumptions.
 
 Instead:
 
 1. resolve skill path from `registry/skills.json`
 2. resolve workflow entry from `entry`
-3. resolve `docx` build and CLI commands from the manifest
+3. resolve `docx` dependencies from the manifest
 4. keep `/workspace/skills` as the clone target so sandbox path expectations remain stable

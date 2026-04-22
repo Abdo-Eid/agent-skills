@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="DocxSkill.Cli/DocxSkill.Cli.csproj" />
-  <Project Path="DocxSkill.Core/DocxSkill.Core.csproj" />
-</Solution>

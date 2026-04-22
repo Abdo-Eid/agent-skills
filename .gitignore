@@ -12,3 +12,6 @@ coverage/
 *.log
 *.tmp
 *.temp
+
+internal-docs/
+skills-main/
