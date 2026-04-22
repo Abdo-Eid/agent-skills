@@ -1,0 +1,130 @@
+{
+  "version": 2,
+  "updatedAt": "2026-04-22",
+  "contract": {
+    "cloneTarget": "/workspace/skills",
+    "skillRoot": "/workspace/skills/skills",
+    "registryPath": "/workspace/skills/registry/skills.json",
+    "resolution": "Load this manifest from the cloned repo root, then resolve each skill using its relative path.",
+    "entryRule": "Each registered runtime skill must expose SKILL.md as the workflow source of truth."
+  },
+  "skills": [
+    {
+      "id": "pdf",
+      "name": "pdf",
+      "path": "skills/pdf",
+      "entry": "skills/pdf/SKILL.md",
+      "type": "runtime",
+      "category": "document-generation",
+      "status": "active",
+      "runtime": {
+        "sandbox": true,
+        "sandboxPath": "/workspace/skills/skills/pdf",
+        "workingDirectory": "/workspace/skills/skills/pdf",
+        "workflowSource": "SKILL.md",
+        "dependencies": {
+          "python": [
+            "reportlab",
+            "pypdf"
+          ],
+          "node": [
+            "playwright",
+            "chromium"
+          ]
+        },
+        "outputFormats": [
+          "pdf"
+        ]
+      }
+    },
+    {
+      "id": "pptx-generator",
+      "name": "pptx-generator",
+      "path": "skills/pptx-generator",
+      "entry": "skills/pptx-generator/SKILL.md",
+      "type": "runtime",
+      "category": "productivity",
+      "status": "active",
+      "runtime": {
+        "sandbox": true,
+        "sandboxPath": "/workspace/skills/skills/pptx-generator",
+        "workingDirectory": "/workspace/skills/skills/pptx-generator",
+        "workflowSource": "SKILL.md",
+        "dependencies": {
+          "python": [
+            "markitdown"
+          ],
+          "node": [
+            "pptxgenjs"
+          ]
+        },
+        "outputFormats": [
+          "pptx"
+        ]
+      }
+    },
+    {
+      "id": "xlsx",
+      "name": "xlsx",
+      "path": "skills/xlsx",
+      "entry": "skills/xlsx/SKILL.md",
+      "type": "runtime",
+      "category": "productivity",
+      "status": "active",
+      "runtime": {
+        "sandbox": true,
+        "sandboxPath": "/workspace/skills/skills/xlsx",
+        "workingDirectory": "/workspace/skills/skills/xlsx",
+        "workflowSource": "SKILL.md",
+        "dependencies": {
+          "python": [
+            "pandas",
+            "openpyxl"
+          ]
+        },
+        "outputFormats": [
+          "xlsx",
+          "xlsm",
+          "csv",
+          "tsv"
+        ]
+      }
+    },
+    {
+      "id": "docx",
+      "name": "docx",
+      "path": "skills/docx",
+      "entry": "skills/docx/SKILL.md",
+      "type": "runtime",
+      "category": "document-processing",
+      "status": "active",
+      "runtime": {
+        "sandbox": true,
+        "sandboxPath": "/workspace/skills/skills/docx",
+        "workingDirectory": "/workspace/skills/skills/docx",
+        "workflowSource": "SKILL.md",
+        "dependencies": {
+          "dotnet": [
+            "net8.0"
+          ],
+          "optional": [
+            "pandoc",
+            "fonts"
+          ]
+        },
+        "prebuild": {
+          "workingDirectory": "/workspace/skills/skills/docx/scripts/dotnet",
+          "restore": "dotnet restore DocxSkill.slnx",
+          "build": "dotnet build DocxSkill.slnx --no-restore"
+        },
+        "cli": {
+          "workingDirectory": "/workspace/skills/skills/docx",
+          "command": "dotnet run --project scripts/dotnet/DocxSkill.Cli --"
+        },
+        "outputFormats": [
+          "docx"
+        ]
+      }
+    }
+  ]
+}
