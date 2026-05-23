@@ -178,15 +178,6 @@ bash scripts/make.sh reformat \
 ## Environment
 
 ```bash
-bash scripts/make.sh check   # verify all deps
-bash scripts/make.sh fix     # auto-install missing deps
+bash scripts/make.sh check   # verify all deps are present
 bash scripts/make.sh demo    # build a sample PDF
 ```
-
-| Tool | Used by | Install |
-|---|---|---|
-| Python 3.9+ | all `.py` scripts | system |
-| `reportlab` | `render_body.py` | `pip install reportlab` |
-| `pypdf` | fill, merge, reformat | `pip install pypdf` |
-| Node.js 18+ | `render_cover.js` | system |
-| `playwright` + Chromium | `render_cover.js` | `npm install -g playwright && npx playwright install chromium` |

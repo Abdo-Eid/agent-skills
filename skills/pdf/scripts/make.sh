@@ -100,8 +100,16 @@ cmd_check() {
 }
 
 # ── fix ────────────────────────────────────────────────────────────────────────
+# DEVELOPER ONLY — not for agent use.
+# All dependencies are pre-baked in the sandbox image. Calling this at runtime
+# violates the no-install-after-spawn contract. Use it locally when setting up
+# a dev environment outside the container.
 cmd_fix() {
-  bold "Installing missing dependencies..."
+  if [[ "${WORKSPACE:-}" == "/workspace" ]] || [[ -f /workspace/skills/registry/skills.json ]]; then
+    red "fix is disabled inside the sandbox. All deps must be pre-baked in the image."
+    exit 1
+  fi
+  bold "Installing missing dependencies (developer environment only)..."
   local rc=0
 
   # Python packages

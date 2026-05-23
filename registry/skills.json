@@ -1,14 +1,47 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-22",
+  "updatedAt": "2026-05-23",
   "contract": {
-    "cloneTarget": "/workspace/skills",
-    "skillRoot": "/workspace/skills/skills",
-    "registryPath": "/workspace/skills/registry/skills.json",
+    "cloneTarget": "/workspace",
+    "skillRoot": "/workspace/skills",
+    "registryPath": "/workspace/registry/skills.json",
     "resolution": "Load this manifest from the cloned repo root, then resolve each skill using its relative path.",
-    "entryRule": "Each registered runtime skill must expose SKILL.md as the workflow source of truth."
+    "entryRule": "Each registered runtime skill must expose SKILL.md as the workflow source of truth.",
+    "dependencyRule": "This registry is the single source of truth for all runtime dependencies. The sandbox image must provide every listed dependency before the agent starts. The agent must not run npm install, pip install, or any initialization commands after spawn."
   },
   "skills": [
+    {
+      "id": "bi-dashboard",
+      "name": "bi-dashboard",
+      "path": "skills/bi-dashboard",
+      "entry": "skills/bi-dashboard/SKILL.md",
+      "type": "runtime",
+      "category": "data-visualization",
+      "status": "active",
+      "runtime": {
+        "sandbox": true,
+        "sandboxPath": "/workspace/skills/bi-dashboard",
+        "workingDirectory": "/workspace/skills/bi-dashboard/scaffold",
+        "workflowSource": "../SKILL.md",
+        "dependencies": {
+          "python": [
+            "duckdb",
+            "pandas",
+            "openpyxl"
+          ],
+          "node": [
+            "vite",
+            "@vitejs/plugin-react",
+            "vite-plugin-singlefile",
+            "echarts",
+            "echarts-for-react",
+            "react",
+            "react-dom"
+          ]
+        },
+        "outputFormats": ["html", "md"]
+      }
+    },
     {
       "id": "pdf",
       "name": "pdf",
@@ -19,22 +52,24 @@
       "status": "active",
       "runtime": {
         "sandbox": true,
-        "sandboxPath": "/workspace/skills/skills/pdf",
-        "workingDirectory": "/workspace/skills/skills/pdf",
+        "sandboxPath": "/workspace/skills/pdf",
+        "workingDirectory": "/workspace/skills/pdf",
         "workflowSource": "SKILL.md",
         "dependencies": {
           "python": [
             "reportlab",
-            "pypdf"
+            "pypdf",
+            "matplotlib",
+            "numpy"
           ],
           "node": [
-            "playwright",
+            "playwright"
+          ],
+          "browser": [
             "chromium"
           ]
         },
-        "outputFormats": [
-          "pdf"
-        ]
+        "outputFormats": ["pdf"]
       }
     },
     {
@@ -47,20 +82,22 @@
       "status": "active",
       "runtime": {
         "sandbox": true,
-        "sandboxPath": "/workspace/skills/skills/pptx-generator",
-        "workingDirectory": "/workspace/skills/skills/pptx-generator",
+        "sandboxPath": "/workspace/skills/pptx-generator",
+        "workingDirectory": "/workspace/skills/pptx-generator",
         "workflowSource": "SKILL.md",
         "dependencies": {
           "python": [
-            "markitdown"
+            "markitdown[pptx]"
           ],
           "node": [
-            "pptxgenjs"
+            "pptxgenjs",
+            "react",
+            "react-dom",
+            "react-icons",
+            "sharp"
           ]
         },
-        "outputFormats": [
-          "pptx"
-        ]
+        "outputFormats": ["pptx"]
       }
     },
     {
@@ -73,21 +110,19 @@
       "status": "active",
       "runtime": {
         "sandbox": true,
-        "sandboxPath": "/workspace/skills/skills/xlsx",
-        "workingDirectory": "/workspace/skills/skills/xlsx",
+        "sandboxPath": "/workspace/skills/xlsx",
+        "workingDirectory": "/workspace/skills/xlsx",
         "workflowSource": "SKILL.md",
         "dependencies": {
           "python": [
             "pandas",
             "openpyxl"
+          ],
+          "system": [
+            "libreoffice"
           ]
         },
-        "outputFormats": [
-          "xlsx",
-          "xlsm",
-          "csv",
-          "tsv"
-        ]
+        "outputFormats": ["xlsx", "xlsm", "csv", "tsv"]
       }
     },
     {
@@ -100,8 +135,8 @@
       "status": "active",
       "runtime": {
         "sandbox": true,
-        "sandboxPath": "/workspace/skills/skills/docx",
-        "workingDirectory": "/workspace/skills/skills/docx",
+        "sandboxPath": "/workspace/skills/docx",
+        "workingDirectory": "/workspace/skills/docx",
         "workflowSource": "SKILL.md",
         "dependencies": {
           "node": [
@@ -111,15 +146,15 @@
             "defusedxml",
             "lxml"
           ],
-          "optional": [
+          "system": [
             "pandoc",
-            "fonts",
-            "libreoffice"
+            "libreoffice",
+            "poppler-utils",
+            "fonts-dejavu",
+            "fonts-liberation"
           ]
         },
-        "outputFormats": [
-          "docx"
-        ]
+        "outputFormats": ["docx"]
       }
     }
   ]

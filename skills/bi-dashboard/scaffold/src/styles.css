@@ -1,0 +1,376 @@
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --bg: #eeeade;
+  --surface: #f8f4ea;
+  --surface-strong: #fffaf0;
+  --text: #2f2f2f;
+  --muted: #5f594f;
+  --border: #e1dbce;
+  --blue: #4f72ad;
+  --navy: #344f86;
+  --sky: #2d92c4;
+  --cyan: #28b6c9;
+  --pink: #f5b5c8;
+  --amber: #c88b3a;
+  --shadow: 0 18px 50px rgba(47, 47, 47, 0.08);
+  --radius-lg: 28px;
+  --radius-md: 20px;
+  --radius-sm: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.dashboard-shell {
+  width: min(1440px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 36px 0 56px;
+}
+
+.dashboard-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.dashboard-eyebrow,
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--navy);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.dashboard-title,
+h1 {
+  margin: 0;
+  max-width: 980px;
+  font-size: clamp(2.5rem, 7vw, 6.4rem);
+  line-height: 0.9;
+  letter-spacing: -0.085em;
+}
+
+.dashboard-subtitle {
+  max-width: 760px;
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  line-height: 1.65;
+}
+
+.headline-card,
+.insight-panel,
+.action-panel,
+.kpi-card,
+.chart-card {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 90%, #fff 10%);
+  box-shadow: var(--shadow);
+}
+
+.headline-card {
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.headline-card strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--navy);
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.headline-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.kpi-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+
+.kpi-card::before {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, var(--blue), var(--cyan), var(--pink));
+  content: "";
+}
+
+.kpi-label {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.kpi-value {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  font-weight: 850;
+  line-height: 0.95;
+  letter-spacing: -0.065em;
+}
+
+.kpi-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.chart-card {
+  grid-column: span 6;
+  display: flex;
+  min-height: 360px;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.chart-card.wide {
+  grid-column: span 8;
+}
+
+.chart-card.full {
+  grid-column: 1 / -1;
+}
+
+.chart-card.compact {
+  grid-column: span 4;
+}
+
+.chart-card-header {
+  padding: 20px 22px 10px;
+}
+
+.chart-card-title {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+.chart-card-subtitle {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.chart-card-body {
+  flex: 1;
+  padding: 8px 14px 18px;
+}
+
+.chart {
+  min-height: 260px;
+}
+
+.insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.insight-panel,
+.action-panel {
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.panel-title {
+  margin: 0 0 16px;
+  color: var(--navy);
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+}
+
+.finding-list,
+.action-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finding-list li,
+.action-list li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.finding-list li::before,
+.action-list li::before {
+  position: absolute;
+  top: 0.62em;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--blue);
+  content: "";
+}
+
+.action-list li::before {
+  background: var(--amber);
+}
+
+.placeholder-shell {
+  width: min(760px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 72px 0;
+}
+
+p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-header,
+  .insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chart-card,
+  .chart-card.wide,
+  .chart-card.compact {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 680px) {
+  .dashboard-shell {
+    width: min(100% - 24px, 1440px);
+    padding: 22px 0 36px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .headline-card,
+  .insight-panel,
+  .action-panel,
+  .kpi-card,
+  .chart-card {
+    border-radius: 18px;
+  }
+
+  .chart-card {
+    min-height: 320px;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  html,
+  body {
+    width: auto;
+    min-width: 0;
+    background: #fff;
+  }
+
+  body {
+    margin: 0;
+  }
+
+  .dashboard-shell {
+    width: 100%;
+    padding: 0;
+  }
+
+  .dashboard-header,
+  .kpi-grid,
+  .dashboard-grid,
+  .insight-grid {
+    gap: 10mm;
+  }
+
+  .chart-card,
+  .chart-card.wide,
+  .chart-card.compact,
+  .chart-card.full {
+    grid-column: 1 / -1;
+  }
+
+  section,
+  article,
+  .chart-card,
+  .kpi-card,
+  .insight-panel {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

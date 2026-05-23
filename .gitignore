@@ -13,5 +13,15 @@ coverage/
 *.tmp
 *.temp
 
+# bi-dashboard runtime artifacts (generated each run, not committed)
+skills/bi-dashboard/scaffold/data/
+skills/bi-dashboard/scaffold/outputs/
+skills/bi-dashboard/uploads/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
 internal-docs/
 skills-main/
