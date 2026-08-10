@@ -1,12 +1,23 @@
-Proprietary and Confidential
+PROPRIETARY LICENSE NOTICE
 
-Copyright (c) 2026
+Copyright (c) 2026 Abdulhamed Samy Eid. All rights reserved.
 
-All rights reserved.
+Except for components explicitly identified in THIRD_PARTY_NOTICES.md, no
+permission is granted to use, copy, modify, merge, publish, distribute,
+sublicense, sell, or create derivative works from this software or its
+documentation without prior written authorization from the copyright holder.
 
-This repository and its contents are proprietary and confidential.
-No part of this repository may be copied, modified, distributed,
-published, sublicensed, or used in any form without prior written
-permission from the repository owner.
+This repository is proprietary. Zynda.ai has permission from the copyright
+holder to use the proprietary portions. This permission does not transfer
+ownership or authorize Zynda.ai to open-source, relicense, or grant rights to
+third parties without separate written authorization from the copyright holder.
 
-Access to this repository is restricted to authorized users only.
+Public availability on GitHub does not grant a general software license.
+Rights required by GitHub's Terms of Service to view and fork public content
+through GitHub remain unaffected.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. TO THE MAXIMUM
+EXTENT PERMITTED BY LAW, THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.

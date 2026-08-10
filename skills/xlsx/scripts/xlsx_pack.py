@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Abdulhamed Samy Eid
 # SPDX-License-Identifier: MIT
 """
 xlsx_pack.py — Pack a working directory back into a valid xlsx file.
@@ -62,7 +63,7 @@ def pack(source_dir: str, xlsx_path: str) -> None:
         )
         sys.exit(1)
 
-    print("✓ All XML files are well-formed")
+    print("OK: All XML files are well-formed")
 
     # Count files to pack
     file_count = sum(len(files) for _, _, files in os.walk(source_dir))
@@ -75,9 +76,8 @@ def pack(source_dir: str, xlsx_path: str) -> None:
                 z.write(fpath, arcname)
 
     size = os.path.getsize(xlsx_path)
-    print(f"Packed {file_count} files → '{xlsx_path}' ({size:,} bytes)")
-    print("\nNext step: run formula_check.py to validate formulas:")
-    print(f"  python3 formula_check.py {xlsx_path}")
+    print(f"Packed {file_count} files to '{xlsx_path}' ({size:,} bytes)")
+    print("\nNext step: call docQa on the final artifact path.")
 
 
 if __name__ == "__main__":

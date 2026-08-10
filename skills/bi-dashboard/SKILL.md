@@ -1,3 +1,9 @@
+---
+name: bi-dashboard
+description: Create polished, self-contained HTML business-intelligence dashboards from local tabular data using the baked React, Vite, ECharts, DuckDB, and pandas runtime.
+license: Proprietary; see /workspace/LICENSE.
+---
+
 # BI Dashboard
 
 Build a polished business intelligence dashboard as one self-contained HTML artifact. Use the React/Vite/ECharts scaffold in this skill, aggregate data locally with DuckDB, and deliver `outputs/index.html` as the final downloadable file.

@@ -28,14 +28,14 @@ Before touching any file, internalize these four rules:
 
 2. **No openpyxl for writing**: The entire file is built by editing XML directly. Python
    is only allowed for reading/analysis (`pandas.read_excel()`) and for running helper
-   scripts (`xlsx_pack.py`, `formula_check.py`).
+   scripts such as `xlsx_pack.py`. Final formula validation belongs to `docQa`.
 
 3. **Style encodes meaning**: Blue font = user input/assumption. Black font = formula
    result. Green font = cross-sheet reference. See `format.md` for the full color system
    and style index table.
 
-4. **Validate before delivery**: Run `formula_check.py` and fix all errors before
-   handing the file to the user.
+4. **Validate before delivery**: Call `docQa` on the packed artifact and fix all
+   reported errors before handing the file to the user.
 
 ---
 
@@ -497,18 +497,12 @@ python3 SKILL_DIR/scripts/xlsx_pack.py /tmp/xlsx_work/ /path/to/output.xlsx
 2. Parse every `.xml` and `.rels` file for well-formedness — abort if any fail
 3. Create the ZIP archive with correct compression
 
-**Validate**:
-
-```bash
-python3 SKILL_DIR/scripts/formula_check.py /path/to/output.xlsx
-```
-
-`formula_check.py` will:
+**Validate** by calling `docQa` with the final artifact path. Its formula validator will:
 1. Scan every cell for `<c t="e">` entries (cached error values) — all 7 error types
 2. Extract sheet name references from every `<f>` formula
 3. Verify each referenced sheet exists in `workbook.xml`
 
-Fix every reported error before delivery. Exit code 0 = safe to deliver.
+Fix every reported error before delivery. A passing, hash-bound `docQa` result is required.
 
 ---
 
@@ -516,7 +510,7 @@ Fix every reported error before delivery. Exit code 0 = safe to deliver.
 
 Run through this list before handing the file to the user:
 
-- [ ] `formula_check.py` reports 0 errors
+- [ ] `docQa` reports a passing formula-validator result for the final artifact
 - [ ] Every calculated cell has `<f>` — not just `<v>` with a number
 - [ ] `sharedStrings.xml` `count` and `uniqueCount` match actual `<si>` count
 - [ ] Every cell `s` attribute value is in range `0` to `cellXfs count - 1`
@@ -682,7 +676,7 @@ The `Summary` sheet pulls from `Data` using cross-sheet formulas (green, `s="3"`
 
 - Do NOT use openpyxl or any Python library to write the final xlsx file
 - Do NOT hardcode any calculated value — use `<f>` formulas for every derived number
-- Do NOT deliver without running `formula_check.py` first
+- Do NOT deliver without a passing `docQa` result for the final artifact
 - Do NOT set a cell's `s` attribute to a value >= `cellXfs count`
 - Do NOT modify an existing `<xf>` entry in `styles.xml` — only append new ones
 - Do NOT add a new sheet without updating all four sync points (workbook.xml,

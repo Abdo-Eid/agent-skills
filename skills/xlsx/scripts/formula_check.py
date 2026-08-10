@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Abdulhamed Samy Eid
 # SPDX-License-Identifier: MIT
 """
 formula_check.py — Static formula validator for xlsx files.
@@ -375,7 +376,7 @@ def main() -> None:
     print(f"Errors found          : {results['error_count']}")
 
     if not summary_only and results["errors"]:
-        print("\n── Error Details ──")
+        print("\n-- Error Details --")
         for e in results["errors"]:
             if e["type"] == "error_value":
                 formula_hint = f" (formula: {e['formula']})" if e.get("formula") else ""
@@ -401,19 +402,19 @@ def main() -> None:
         print()
 
     if results["error_count"] == 0:
-        print("PASS — No formula errors detected")
+        print("PASS - No formula errors detected")
     else:
         # Separate definitive failures from heuristic warnings
         hard_errors = [e for e in results["errors"] if e["type"] != "unknown_name_ref"]
         warnings = [e for e in results["errors"] if e["type"] == "unknown_name_ref"]
         if hard_errors:
-            print(f"FAIL — {len(hard_errors)} error(s) must be fixed before delivery")
+            print(f"FAIL - {len(hard_errors)} error(s) must be fixed before delivery")
             if warnings:
-                print(f"WARN — {len(warnings)} heuristic warning(s) require manual review")
+                print(f"WARN - {len(warnings)} heuristic warning(s) require manual review")
             sys.exit(1)
         else:
             # Only heuristic warnings — do not block delivery but alert
-            print(f"PASS with WARN — {len(warnings)} heuristic warning(s) require manual review")
+            print(f"PASS with WARN - {len(warnings)} heuristic warning(s) require manual review")
             # Exit 0: heuristic warnings alone do not block delivery
             sys.exit(0)
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Abdulhamed Samy Eid
 # SPDX-License-Identifier: MIT
 """
 xlsx_unpack.py — Unpack an xlsx file into a working directory for XML editing.
@@ -71,7 +72,7 @@ def unpack(xlsx_path: str, output_dir: str) -> None:
                     f.write(pretty)
                 xml_count += 1
 
-    print(f"Unpacked '{xlsx_path}' → '{output_dir}'")
+    print(f"Unpacked '{xlsx_path}' to '{output_dir}'")
     print(f"Pretty-printed {xml_count} XML/rels files\n")
 
     # Print key files grouped by category
@@ -117,10 +118,10 @@ def unpack(xlsx_path: str, output_dir: str) -> None:
     for path, warning in risky.items():
         full = os.path.join(output_dir, path)
         if os.path.exists(full):
-            print(f"    ⚠️  {path} — {warning}")
+            print(f"    WARN: {path} - {warning}")
             found_any = True
     if not found_any:
-        print("    ✓ None (safe to edit)")
+        print("    OK: None (safe to edit)")
 
 
 if __name__ == "__main__":

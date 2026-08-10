@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Abdulhamed Samy Eid
 # SPDX-License-Identifier: MIT
 """
 style_audit.py — Financial formatting compliance checker for xlsx files.
@@ -491,7 +492,7 @@ def main() -> None:
         elif target.endswith(".xlsx") or target.endswith(".xlsm"):
             styles_xml, sheet_xmls = _load_from_xlsx(target)
         else:
-            print(f"ERROR: unrecognized target '{target}' — must be .xlsx file or unpacked directory")
+            print(f"ERROR: unrecognized target '{target}' - must be .xlsx file or unpacked directory")
             sys.exit(1)
     except Exception as e:
         print(f"ERROR loading file: {e}")
@@ -513,7 +514,7 @@ def main() -> None:
 
     if not summary_only:
         if results["violations"]:
-            print("\n── Violations (must fix) ──")
+            print("\n-- Violations (must fix) --")
             for item in results["violations"]:
                 t = item["type"]
                 if t == "count_mismatch":
@@ -547,7 +548,7 @@ def main() -> None:
                     print(f"  [FAIL] {item}")
 
         if results["warnings"] and not summary_only:
-            print("\n── Warnings (review recommended) ──")
+            print("\n-- Warnings (review recommended) --")
             for item in results["warnings"]:
                 t = item["type"]
                 if t == "numeric_input_may_lack_blue":
@@ -563,11 +564,11 @@ def main() -> None:
     print()
     if s["violations"] == 0:
         if s["warnings"] == 0:
-            print("PASS — Financial formatting is compliant")
+            print("PASS - Financial formatting is compliant")
         else:
-            print(f"PASS with WARN — {s['warnings']} warning(s) need review")
+            print(f"PASS with WARN - {s['warnings']} warning(s) need review")
     else:
-        print(f"FAIL — {s['violations']} violation(s) must be fixed before delivery")
+        print(f"FAIL - {s['violations']} violation(s) must be fixed before delivery")
         sys.exit(1)
 
 

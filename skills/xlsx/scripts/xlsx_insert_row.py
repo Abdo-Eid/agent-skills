@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Abdulhamed Samy Eid
 # SPDX-License-Identifier: MIT
 """
 xlsx_insert_row.py — Insert a new data row into a worksheet in an unpacked xlsx.
@@ -188,7 +189,7 @@ def main() -> None:
     text_indices = {}
     for col, text in text_cells.items():
         text_indices[col] = add_shared_string(args.work_dir, text)
-        print(f"  Added shared string: \"{text}\" → index {text_indices[col]}")
+        print(f"  Added shared string: \"{text}\" -> index {text_indices[col]}")
 
     # Step 4: Re-parse worksheet and build new row
     ws_tree = ET.parse(ws_path)
@@ -262,7 +263,7 @@ def main() -> None:
             new_ref = f"{start_ref}:{max_col_letter}{end_row}"
             if new_ref != old_ref:
                 dim.set("ref", new_ref)
-                print(f"\n  Dimension: {old_ref} → {new_ref}")
+                print(f"\n  Dimension: {old_ref} -> {new_ref}")
 
     _write_tree(ws_tree, ws_path)
 

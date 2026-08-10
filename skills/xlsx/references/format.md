@@ -519,10 +519,8 @@ For consecutive rows of the same type, row-level default styles can be used to r
 # Style audit (optional, audit the entire unpacked directory after formatting is complete)
 python3 SKILL_DIR/scripts/style_audit.py /tmp/xlsx_fmt/unpacked/
 
-# Formula error static scan (must specify a single .xlsx file, does not accept directories)
-# Pack first, then scan:
+# Pack the final workbook, then call docQa on the artifact path:
 python3 SKILL_DIR/scripts/xlsx_pack.py /tmp/xlsx_fmt/unpacked/ /tmp/output.xlsx
-python3 SKILL_DIR/scripts/formula_check.py /tmp/output.xlsx
 ```
 
 Manual style reference integrity check:
@@ -757,7 +755,7 @@ In the assumptions area (Assumptions sheet or assumptions block), organize assum
 
 Before outputting the final file, confirm each item:
 
-- [ ] Formula rows contain no hard-coded values (can use `formula_check.py` to scan the packaged `.xlsx` file)
+- [ ] Formula rows contain no hard-coded derived values and final `docQa` passes
 - [ ] Year columns display as 2024 not 2,024 (numFmtId="1", format `0`)
 - [ ] Negative numbers display as (1,234) not -1,234 (use parenthetical style for externally delivered financial reports)
 - [ ] Zero values display as `-` in sparse rows rather than `0` (formatCode third segment is `"-"`)

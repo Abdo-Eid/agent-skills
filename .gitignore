@@ -1,27 +1,5 @@
-.DS_Store
-Thumbs.db
-
-.idea/
-.vscode/
-
 node_modules/
-dist/
-build/
-coverage/
-
-*.log
-*.tmp
-*.temp
-
-# bi-dashboard runtime artifacts (generated each run, not committed)
-skills/bi-dashboard/scaffold/data/
-skills/bi-dashboard/scaffold/outputs/
-skills/bi-dashboard/uploads/
-
-# Python cache
+outputs/
 __pycache__/
-*.pyc
-*.pyo
-
-internal-docs/
-skills-main/
+*.py[cod]
+.DS_Store

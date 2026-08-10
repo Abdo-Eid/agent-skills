@@ -123,10 +123,9 @@ After any change that shifts row or column positions, audit all affected XML reg
 
 ```bash
 python3 SKILL_DIR/scripts/xlsx_pack.py /tmp/xlsx_work/ output.xlsx
-python3 SKILL_DIR/scripts/formula_check.py output.xlsx
 ```
 
-The pack script validates XML well-formedness before creating the ZIP. Fix any reported parse errors before packing. After packing, run `formula_check.py` to confirm no formula errors were introduced.
+The pack script validates XML well-formedness before creating the ZIP. Fix any reported parse errors before packing. After packing to the project's final `out/` path, call `docQa` to confirm no formula errors were introduced.
 
 ---
 
@@ -519,8 +518,8 @@ The script updates in one pass: `<row r="...">` attributes, `<c r="...">` cell a
 **After running the shift script, always repack and validate:**
 ```bash
 python3 SKILL_DIR/scripts/xlsx_pack.py /tmp/xlsx_work/ output.xlsx
-python3 SKILL_DIR/scripts/formula_check.py output.xlsx
 ```
+Call `docQa` on the packed final artifact; do not invoke the QA-owned formula validator directly.
 
 **What the script does NOT update (review manually):**
 - Named ranges in `xl/workbook.xml` `<definedNames>` — check and update if they reference shifted rows.
@@ -646,25 +645,15 @@ Fill the target cells (`Assumptions!B5`, `Assumptions!B6`) directly.
 
 Never skip validation. Even a one-character change in a formula can cause cascading errors.
 
-```bash
-# Pack
-python3 SKILL_DIR/scripts/xlsx_pack.py /tmp/xlsx_work/ output.xlsx
+Pack the workbook to the project's final `out/` path, then call `docQa`. If the requested deliverable requires recalculated cached values, recalculate before the final `docQa` call so QA binds to the delivered bytes.
 
-# Static formula validation (always run)
-python3 SKILL_DIR/scripts/formula_check.py output.xlsx
-
-# Dynamic validation (if LibreOffice available)
-python3 SKILL_DIR/scripts/libreoffice_recalc.py output.xlsx /tmp/recalc.xlsx
-python3 SKILL_DIR/scripts/formula_check.py /tmp/recalc.xlsx
-```
-
-If `formula_check.py` reports any error:
+If `docQa` reports any formula-validator error:
 1. Unpack the output file again (it is the packed version).
 2. Locate the reported cell in the worksheet XML.
 3. Fix the `<f>` element.
-4. Repack and re-validate.
+4. Repack and call `docQa` again.
 
-Do not deliver the file until `formula_check.py` reports zero errors.
+Do not deliver the file until `docQa` passes.
 
 ---
 

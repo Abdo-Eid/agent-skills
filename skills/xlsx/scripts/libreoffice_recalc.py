@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Abdulhamed Samy Eid
 # SPDX-License-Identifier: MIT
 """
 libreoffice_recalc.py — Tier 2 dynamic formula recalculation via LibreOffice headless.
@@ -7,8 +8,8 @@ Opens the xlsx file with the LibreOffice Calc engine, executes all formulas, wri
 the computed values into the <v> cache elements, and saves the result. This is the
 closest server-side equivalent of "open in Excel and save."
 
-After recalculation, run formula_check.py on the output file to detect runtime errors
-(#DIV/0!, #N/A, etc.) that only surface after actual computation.
+After recalculation, call docQa on the output file so formula validation is
+recorded against the final artifact bytes.
 
 Usage:
     python3 libreoffice_recalc.py input.xlsx output.xlsx
@@ -87,9 +88,7 @@ def recalculate(
     if not soffice:
         return False, (
             "LibreOffice not found. Tier 2 validation is unavailable in this environment. "
-            "Install LibreOffice to enable dynamic formula recalculation.\n"
-            "  macOS:  brew install --cask libreoffice\n"
-            "  Linux:  sudo apt-get install -y libreoffice"
+            "The baked document runtime must provide LibreOffice."
         )
 
     version = get_libreoffice_version(soffice)
@@ -175,9 +174,9 @@ Examples:
   # Check if LibreOffice is available (useful in CI)
   python3 libreoffice_recalc.py --check
 
-  # Full validation pipeline
+  # Recalculate, then call docQa on the resulting final artifact
   python3 libreoffice_recalc.py input.xlsx /tmp/recalc.xlsx && \\
-    python3 formula_check.py /tmp/recalc.xlsx
+    echo "Call docQa on /tmp/recalc.xlsx"
 """,
     )
     parser.add_argument("input", nargs="?", help="Input xlsx file path")
@@ -207,9 +206,7 @@ Examples:
             sys.exit(0)
         else:
             print("LibreOffice NOT available.")
-            print("Tier 2 dynamic validation requires LibreOffice.")
-            print("  macOS:  brew install --cask libreoffice")
-            print("  Linux:  sudo apt-get install -y libreoffice")
+            print("The baked document runtime is missing LibreOffice.")
             sys.exit(2)
 
     # ── Recalculation mode ────────────────────────────────────────────────────
@@ -231,8 +228,7 @@ Examples:
     if success:
         print(f"OK: {message}")
         print()
-        print("Next step: run formula_check.py on the recalculated file to detect runtime errors:")
-        print(f"  python3 formula_check.py {args.output}")
+        print("Next step: call docQa on the recalculated final artifact.")
         sys.exit(0)
     else:
         # Distinguish "not installed" (exit 2) from "failed" (exit 1)

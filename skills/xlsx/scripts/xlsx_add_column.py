@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Abdulhamed Samy Eid
 # SPDX-License-Identifier: MIT
 """
 xlsx_add_column.py — Add a new column to a worksheet in an unpacked xlsx.
@@ -359,7 +360,7 @@ def main() -> None:
             if col_number(col) > col_number(end_col_str):
                 new_ref = f"{start_ref}:{col}{end_row_str}"
                 dim.set("ref", new_ref)
-                print(f"  Dimension: {old_ref} → {new_ref}")
+                print(f"  Dimension: {old_ref} -> {new_ref}")
 
     # Extend <cols> to cover new column
     cols_el = root.find(_tag("cols"))

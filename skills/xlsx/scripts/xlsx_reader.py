@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Abdulhamed Samy Eid
 # SPDX-License-Identifier: MIT
 """
 xlsx_reader.py — Structure discovery and data analysis tool for Excel/CSV files.
@@ -38,7 +39,7 @@ def detect_and_load(file_path: str, sheet_name_filter: str | None = None) -> dic
         import pandas as pd
     except ImportError:
         raise RuntimeError(
-            "pandas is not installed. Run: pip install pandas openpyxl"
+            "pandas/openpyxl is missing from the baked document runtime"
         )
 
     path = Path(file_path)

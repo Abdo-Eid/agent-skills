@@ -1,18 +1,17 @@
 ---
 name: xlsx
 description: "Open, create, read, analyze, edit, or validate Excel/spreadsheet files (.xlsx, .xlsm, .csv, .tsv). Use when the user asks to create, build, modify, analyze, read, validate, or format any Excel spreadsheet, financial model, pivot table, or tabular data file. Covers: creating new xlsx from scratch, reading and analyzing existing files, editing existing xlsx with zero format loss, formula recalculation and validation, and applying professional financial formatting standards. Triggers on 'spreadsheet', 'Excel', '.xlsx', '.csv', 'pivot table', 'financial model', 'formula', or any request to produce tabular data in Excel format."
-license: Proprietary
+license: Proprietary except MIT helper scripts; see /workspace/LICENSE and /workspace/THIRD_PARTY_NOTICES.md.
 metadata:
   version: "1.0"
   category: productivity
   sources:
-    - ECMA-376 Office Open XML File Formats
-    - Microsoft Open XML SDK documentation
+    - Historical first-party XLSX implementation
 ---
 
-# XLSX Skill
+# XLSX
 
-Handle the request directly. Do NOT spawn sub-agents. Always write the output file the user requests.
+Build durable generators under `/workspace/projects/<projectId>/src` and write the requested final workbook under `out/`. The retained first-party helper scripts remain available for source-preserving edits. Do not install packages or invoke the QA-owned formula validator directly; `docQa` runs it before delivery.
 
 ## Task Routing
 
@@ -22,7 +21,7 @@ Handle the request directly. Do NOT spawn sub-agents. Always write the output fi
 | **CREATE** — new xlsx from scratch | XML template | `references/create.md` + `references/format.md` |
 | **EDIT** — modify existing xlsx | XML unpack→edit→pack | `references/edit.md` (+ `format.md` if styling needed) |
 | **FIX** — repair broken formulas in existing xlsx | XML unpack→fix `<f>` nodes→pack | `references/fix.md` |
-| **VALIDATE** — check formulas | `formula_check.py` | `references/validate.md` |
+| **VALIDATE** — check formulas | Call `docQa` after the build | `references/validate.md` |
 
 ## READ — Analyze data (read `references/read-analyze.md` first)
 
@@ -106,7 +105,7 @@ This is an EDIT task. Unpack → fix broken `<f>` nodes → pack. Preserve all o
 
 ## VALIDATE — Check formulas (read `references/validate.md` first)
 
-Run `formula_check.py` for static validation. Use `libreoffice_recalc.py` for dynamic recalculation when available.
+`docQa` runs the retained static formula validator and records hash-bound delivery evidence. Reference-file commands that invoke `formula_check.py` are explanatory implementation detail, not commands the agent may run: the workspace guard reserves them for `docQa`. Use LibreOffice recalculation in the generator workflow only when a recalculated workbook is the requested deliverable; do not use it as a substitute for `docQa`.
 
 ## Financial Color Standard
 
@@ -122,14 +121,13 @@ Run `formula_check.py` for static validation. Use `libreoffice_recalc.py` for dy
 2. **CREATE → XML template**: Copy minimal template, edit XML directly, pack with `xlsx_pack.py`
 3. **EDIT → XML**: Never openpyxl round-trip. Use unpack/edit/pack scripts
 4. **Always produce the output file** — this is the #1 priority
-5. **Validate before delivery**: `formula_check.py` exit code 0 = safe
+5. **Validate before delivery**: call `docQa`; it owns the formula-validator result
 
 ## Utility Scripts
 
 ```bash
 python3 SKILL_DIR/scripts/xlsx_reader.py input.xlsx                 # structure discovery
-python3 SKILL_DIR/scripts/formula_check.py file.xlsx --json         # formula validation
-python3 SKILL_DIR/scripts/formula_check.py file.xlsx --report      # standardized report
+# Formula validation is owned by docQa; do not invoke formula_check.py directly.
 python3 SKILL_DIR/scripts/xlsx_unpack.py in.xlsx /tmp/work/         # unpack for XML editing
 python3 SKILL_DIR/scripts/xlsx_pack.py /tmp/work/ out.xlsx          # repack after editing
 python3 SKILL_DIR/scripts/xlsx_shift_rows.py /tmp/work/ insert 5 1  # shift rows for insertion

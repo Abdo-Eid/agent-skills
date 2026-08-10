@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "pack": "agent-skills",
+  "copyrightHolder": "Abdulhamed Samy Eid",
+  "authorizedUser": "Zynda.ai",
+  "authorization": "Permission to use the proprietary work; no ownership assignment, transfer, sublicensing, or public relicensing authority",
+  "distributionRepository": "https://github.com/Abdo-Eid/agent-skills",
+  "runtimeContract": {
+    "skillNames": ["pdf", "pptx", "xlsx", "docx", "bi-dashboard"],
+    "noRuntimeInstalls": true
+  },
+  "files": [
+    {
+      "path": "skills/pdf",
+      "origin": "First-party synthesis",
+      "evidence": "Historical PDF behavior at agent-skills commit c9e162420a55ea8c2a6bde07a850a2d6604c02ed and official ReportLab, Playwright, pdf-lib, and pypdf documentation",
+      "license": "LicenseRef-Proprietary"
+    },
+    {
+      "path": "skills/pptx",
+      "origin": "First-party synthesis",
+      "evidence": "Historical PPTX design behavior at agent-skills commit 8df18b1abbdad1e2f90cf19c22549e7ce79db315 and official PptxGenJS documentation",
+      "license": "LicenseRef-Proprietary"
+    },
+    {
+      "path": "skills/docx",
+      "origin": "First-party implementation based on official docx package documentation",
+      "evidence": "No prior DOCX skill content was copied",
+      "license": "LicenseRef-Proprietary"
+    },
+    {
+      "path": "skills/docx/scripts/validate_ooxml.py",
+      "origin": "First-party independent validator",
+      "evidence": "Python standard library zipfile plus defusedxml already baked into the image",
+      "license": "LicenseRef-Proprietary"
+    },
+    {
+      "path": "skills/xlsx except skills/xlsx/scripts/*.py",
+      "origin": "Historical first-party implementation",
+      "evidence": "Survived the aa519f9 replacement and was retained from prior agent-skills history",
+      "license": "LicenseRef-Proprietary"
+    },
+    {
+      "path": "skills/xlsx/scripts/*.py",
+      "origin": "Historical first-party implementation",
+      "evidence": "Authored by the Abdo-Eid account and published with SPDX MIT identifiers",
+      "license": "MIT"
+    },
+    {
+      "path": "skills/bi-dashboard",
+      "origin": "Historical first-party implementation",
+      "evidence": "Dashboard implementation at agent-skills commit 8df18b1abbdad1e2f90cf19c22549e7ce79db315; retained without functional changes",
+      "license": "LicenseRef-Proprietary"
+    }
+  ],
+  "excludedSources": [
+    "anthropics/skills and downstream adaptations",
+    "the restricted PDF/PPTX replacement at commit aa519f9ff0b04fbf44566054f1a69d0ae6e1440b"
+  ],
+  "authorshipProcess": "Historical human-authored first-party components plus independently composed, AI-assisted material. AI is not identified as an author."
+}
