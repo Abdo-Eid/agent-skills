@@ -280,6 +280,21 @@ def values_equal(received: Any, expected: Any, tolerance: float) -> bool:
     return json_value(received) == expected
 
 
+def canonical_contract_key(value: Any) -> str:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        number = float(value)
+        if math.isfinite(number) and number.is_integer():
+            return str(int(number))
+    return str(value or "").strip()
+
+
+def cells_in_reference(sheet: Any, reference: str) -> list[Any]:
+    selected = sheet[reference]
+    if isinstance(selected, tuple):
+        return [cell for row in selected for cell in row]
+    return [selected]
+
+
 def load_contract(path: Path, explicit: Path | None, issues: list[dict[str, Any]]) -> dict[str, Any] | None:
     contract_path = explicit or Path(str(path) + ".qa.json")
     if not contract_path.exists():
@@ -311,6 +326,10 @@ def load_contract(path: Path, explicit: Path | None, issues: list[dict[str, Any]
         "freezePanes",
         "requiredCharts",
         "printSettings",
+        "requiredTables",
+        "keyRelations",
+        "sheetViews",
+        "borderRanges",
     )
     for field in list_fields:
         if field in contract and not isinstance(contract[field], list):
@@ -420,9 +439,7 @@ def check_contract(
         try:
             sheet_name, cell_range = split_cell_reference(assertion["range"])
             received = [
-                json_value(cell.value)
-                for row in cached[sheet_name][cell_range]
-                for cell in row
+                json_value(cell.value) for cell in cells_in_reference(cached[sheet_name], cell_range)
             ]
             expected = assertion["values"]
             if received != expected:
@@ -513,12 +530,17 @@ def check_contract(
                 )
             if "fitToWidth" in assertion:
                 received_width = sheet.page_setup.fitToWidth
-                effective_width = 1 if received_width is None else int(received_width)
-                if effective_width != int(assertion["fitToWidth"]):
+                fit_properties = sheet.sheet_properties.pageSetUpPr
+                fit_enabled = bool(fit_properties and fit_properties.fitToPage)
+                effective_width = (
+                    1 if fit_enabled and received_width is None else int(received_width or 0)
+                )
+                if not fit_enabled or effective_width != int(assertion["fitToWidth"]):
                     issue(
                         issues,
                         "XLSX_PRINT_WIDTH_CONTRACT",
-                        f"expected fitToWidth={assertion['fitToWidth']}, received {effective_width!r}",
+                        f"expected fitToPage=true and fitToWidth={assertion['fitToWidth']}, "
+                        f"received fitToPage={fit_enabled!r}, fitToWidth={effective_width!r}",
                         assertion["sheet"],
                     )
             if assertion.get("requirePrintArea") and not sheet.print_area:
@@ -530,6 +552,163 @@ def check_contract(
                 )
         except Exception as error:
             issue(issues, "XLSX_PRINT_CONTRACT_INVALID", str(error), assertion.get("sheet"))
+
+    for assertion in contract.get("requiredTables", []):
+        try:
+            from openpyxl.utils.cell import range_boundaries
+
+            sheet = workbook[assertion["sheet"]]
+            table_name = assertion.get("name")
+            table = sheet.tables.get(table_name) if table_name else None
+            if table is None and not table_name and len(sheet.tables) == 1:
+                table = next(iter(sheet.tables.values()))
+            if table is None:
+                issue(
+                    issues,
+                    "XLSX_TABLE_CONTRACT",
+                    f"required table {table_name or '<single table>'!r} not found; received {list(sheet.tables)!r}",
+                    assertion["sheet"],
+                )
+                continue
+            received_ref = str(table.ref)
+            expected_ref = assertion.get("ref")
+            if expected_ref and received_ref != expected_ref:
+                issue(
+                    issues,
+                    "XLSX_TABLE_RANGE_CONTRACT",
+                    f"expected {expected_ref!r}, received {received_ref!r}",
+                    f"{assertion['sheet']}!{table.name}",
+                )
+            if "dataRows" in assertion:
+                _, min_row, _, max_row = range_boundaries(received_ref)
+                received_rows = int(max_row or 0) - int(min_row or 0)
+                if getattr(table, "totalsRowShown", False):
+                    received_rows -= 1
+                if received_rows != int(assertion["dataRows"]):
+                    issue(
+                        issues,
+                        "XLSX_TABLE_ROW_COUNT_CONTRACT",
+                        f"expected {assertion['dataRows']} data rows, received {received_rows}",
+                        f"{assertion['sheet']}!{table.name}",
+                    )
+            expected_headers = assertion.get("headers")
+            if expected_headers is not None:
+                received_headers = [column.name for column in table.tableColumns]
+                if received_headers != expected_headers:
+                    issue(
+                        issues,
+                        "XLSX_TABLE_HEADER_CONTRACT",
+                        f"expected {expected_headers!r}, received {received_headers!r}",
+                        f"{assertion['sheet']}!{table.name}",
+                    )
+        except Exception as error:
+            issue(issues, "XLSX_TABLE_CONTRACT_INVALID", str(error), assertion.get("sheet"))
+
+    for assertion in contract.get("keyRelations", []):
+        try:
+            subset_sheet, subset_range = split_cell_reference(assertion["subsetRange"])
+            superset_sheet, superset_range = split_cell_reference(assertion["supersetRange"])
+            subset_cells = cells_in_reference(cached[subset_sheet], subset_range)
+            superset_cells = cells_in_reference(cached[superset_sheet], superset_range)
+            ignore_blanks = assertion.get("ignoreBlanks", True)
+            subset_values = [
+                (f"{subset_sheet}!{cell.coordinate}", canonical_contract_key(cell.value))
+                for cell in subset_cells
+                if not ignore_blanks or canonical_contract_key(cell.value)
+            ]
+            superset_values = {
+                canonical_contract_key(cell.value)
+                for cell in superset_cells
+                if not ignore_blanks or canonical_contract_key(cell.value)
+            }
+            unexpected = [(location, value) for location, value in subset_values if value not in superset_values]
+            if unexpected:
+                truncated = (
+                    f"; and {len(unexpected) - 20} more" if len(unexpected) > 20 else ""
+                )
+                issue(
+                    issues,
+                    "XLSX_KEY_SUBSET_CONTRACT",
+                    f"unexpected keys {unexpected[:20]!r}{truncated}; "
+                    f"superset={assertion['supersetRange']}",
+                    assertion["subsetRange"],
+                )
+            if assertion.get("requireUnique"):
+                counts = Counter(value for _, value in subset_values)
+                duplicates = sorted(value for value, count in counts.items() if count > 1)
+                if duplicates:
+                    issue(
+                        issues,
+                        "XLSX_KEY_UNIQUENESS_CONTRACT",
+                        f"duplicate keys {duplicates[:20]!r}",
+                        assertion["subsetRange"],
+                    )
+        except Exception as error:
+            issue(
+                issues,
+                "XLSX_KEY_RELATION_CONTRACT_INVALID",
+                str(error),
+                assertion.get("subsetRange"),
+            )
+
+    for assertion in contract.get("sheetViews", []):
+        try:
+            sheet = workbook[assertion["sheet"]]
+            if "showGridLines" in assertion:
+                received = sheet.sheet_view.showGridLines is not False
+                if received != bool(assertion["showGridLines"]):
+                    issue(
+                        issues,
+                        "XLSX_GRIDLINES_CONTRACT",
+                        f"expected showGridLines={assertion['showGridLines']}, received {received}",
+                        assertion["sheet"],
+                    )
+            if assertion.get("allowHiddenRows") is False:
+                hidden_rows = [row for row, dimension in sheet.row_dimensions.items() if dimension.hidden]
+                if hidden_rows:
+                    issue(
+                        issues,
+                        "XLSX_HIDDEN_ROWS_CONTRACT",
+                        f"hidden rows are not allowed: {hidden_rows[:20]!r}",
+                        assertion["sheet"],
+                    )
+            if assertion.get("allowHiddenColumns") is False:
+                hidden_columns = [
+                    column for column, dimension in sheet.column_dimensions.items() if dimension.hidden
+                ]
+                if hidden_columns:
+                    issue(
+                        issues,
+                        "XLSX_HIDDEN_COLUMNS_CONTRACT",
+                        f"hidden columns are not allowed: {hidden_columns[:20]!r}",
+                        assertion["sheet"],
+                    )
+        except Exception as error:
+            issue(issues, "XLSX_SHEET_VIEW_CONTRACT_INVALID", str(error), assertion.get("sheet"))
+
+    for assertion in contract.get("borderRanges", []):
+        try:
+            sheet_name, cell_range = split_cell_reference(assertion["range"])
+            expected_style = assertion.get("style", "thin")
+            sides = assertion.get("sides", ["left", "right", "top", "bottom"])
+            failures: list[str] = []
+            for cell in cells_in_reference(workbook[sheet_name], cell_range):
+                for side in sides:
+                    received_style = getattr(cell.border, side).style
+                    if received_style != expected_style:
+                        failures.append(f"{cell.coordinate}.{side}={received_style!r}")
+                        break
+                if len(failures) >= 20:
+                    break
+            if failures:
+                issue(
+                    issues,
+                    "XLSX_BORDER_CONTRACT",
+                    f"expected {expected_style!r} borders; mismatches {failures!r}",
+                    assertion["range"],
+                )
+        except Exception as error:
+            issue(issues, "XLSX_BORDER_CONTRACT_INVALID", str(error), assertion.get("range"))
 
 
 def check_workbook_structures(workbook: Any, issues: list[dict[str, Any]]) -> None:
@@ -745,7 +924,9 @@ def validate(path: Path, contract_path: Path | None) -> dict[str, Any]:
                     cached_errors.append(f"{sheet.title}!{cell.coordinate}={cached_value}")
 
     contract = load_contract(path, contract_path, issues)
-    require_caches = formula_cells > 0
+    require_caches = formula_cells > 0 and (
+        bool(contract.get("requireFormulaCaches", True)) if contract else True
+    )
     if require_caches:
         for location in missing_caches[:100]:
             issue(issues, "XLSX_FORMULA_CACHE_MISSING", "formula has no cached result", location)

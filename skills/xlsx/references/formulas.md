@@ -52,6 +52,10 @@ Do not blanket every formula with `IFERROR(...,0)` because it can conceal broken
 
 LibreOffice and Excel can differ on newer, volatile, dynamic-array, add-in, and external-workbook functions. Prefer ordinary arithmetic, aggregation, lookup, logical, and date formulas when they satisfy the task. If advanced Excel-specific behavior is required, document the compatibility limit and do not claim equivalent Excel calculation without an Excel engine.
 
+For cross-engine deliverables, prefer formulas with long-standing OOXML support such as `SUM`, `COUNTIF(S)`, `SUMIF(S)`, `AVERAGEIF(S)`, `IF`, `INDEX`/`MATCH`, and explicit helper columns. Test newer functions such as `XLOOKUP`, `FILTER`, `UNIQUE`, `LET`, `MAXIFS`, or dynamic arrays through the required recalculation engine before relying on them. A conventional helper range is preferable to an elegant formula that LibreOffice cannot cache correctly.
+
+Formula compatibility does not make unlike metrics comparable. Keep source units visible and either normalize with a documented conversion or calculate/rank within unit-compatible groups.
+
 ## Cached Results
 
 XlsxWriter does not calculate formulas. The raw workbook is therefore not deliverable. The generator must pass it through `recalculate_workbook.py`, and QA must inspect the recalculated final file with both formula and `data_only` views.

@@ -33,6 +33,10 @@ Every generated workbook must place structured assertions at `<artifact>.qa.json
 | `freezePanes` | Expected frozen pane per sheet |
 | `requiredCharts` | Minimum chart count and optional minimum series count per sheet |
 | `printSettings` | Expected orientation, fit-to-width, and print-area presence |
+| `requiredTables` | Required table name, exact range, headers, and/or data-row count |
+| `keyRelations` | Assert that keys in `subsetRange` exist in `supersetRange`, with optional subset uniqueness |
+| `sheetViews` | Expected gridline visibility and whether hidden rows/columns are allowed |
+| `borderRanges` | Expected border style and sides across a printable range |
 
 Use exact locations. Never accept an expected value merely because it appears somewhere in the workbook.
 
@@ -55,6 +59,8 @@ If `pass` is false, repair the generator rather than the `.xlsx`, rebuild once, 
 - Formula cache missing: fix recalculation or unsupported formula behavior.
 - Exact formula mismatch: fix the owning generator formula.
 - Expected value mismatch: inspect assumptions and formula lineage; do not insert the expected number elsewhere.
+- Table/key mismatch: report the exact table range and offending cell/value pairs; never scan narrative or notes below a declared table as data.
+- Hidden structure or border mismatch: fix the generator so on-screen and printed data remain auditable.
 - Contract contradiction: report it instead of weakening the contract.
 - Rendering fragmentation: fix print area, orientation, scaling, widths, or chart placement.
 - LibreOffice/Excel semantic difference: report the engine limit and do not claim Excel parity.

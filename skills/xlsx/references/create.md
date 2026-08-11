@@ -4,7 +4,7 @@ Use this route only for a new workbook. XlsxWriter owns package creation; the ge
 
 ## Start From The Scaffold
 
-Copy `templates/generate_workbook.py` into the active project and adapt it:
+Copy the matching template into the active project and adapt it. Use `generate_workbook.py` for a formula model or `generate_data_workbook.py` for CSV-backed cleaning/EDA:
 
 ```bash
 cp <skills-root>/xlsx/templates/generate_workbook.py \
@@ -23,6 +23,10 @@ Do not run package installers. A missing XlsxWriter, openpyxl, pandas, or LibreO
 Before writing source, decide:
 
 - Exact sheet names and order.
+- Source identity, provenance, immutable raw-data range, and row/key lineage.
+- A source-header data dictionary with readable display labels, definitions, and units when machine names are not natural for users.
+- Input profile: schema, row count, nulls, sentinel candidates, inferred types, key uniqueness, category counts, and unit semantics.
+- Cleaning rules by column, including why each sentinel or type conversion is valid.
 - Input and assumption cells.
 - Formula rows and cross-sheet dependencies.
 - Executive outputs and reconciliation checks.
@@ -30,7 +34,7 @@ Before writing source, decide:
 - Tables, filters, validation, and frozen panes.
 - Chart purpose, ranges, axis scales, and labels.
 - Print area, orientation, repeating rows, and fit-to-width.
-- Exact QA assertions that prove the requested result.
+- Exact QA assertions that prove row counts, table bounds, key lineage, formulas, outputs, and visible/print structure.
 
 ## Build With XlsxWriter
 
@@ -105,13 +109,13 @@ Every important sheet needs deliberate print behavior because `docQa` renders th
 ```python
 forecast.set_landscape()
 forecast.fit_to_pages(1, 1)
-forecast.set_repeat_rows(0, 1)
+forecast.repeat_rows(0, 1)
 forecast.print_area("A1:M11")
 forecast.set_margins(0.25, 0.25, 0.5, 0.5)
-forecast.hide_gridlines(2)
+forecast.hide_gridlines(0)
 ```
 
-Do not force a dense sheet to one unreadably small page. Use one page wide and an appropriate number of pages tall when necessary.
+`repeat_rows(first_row, last_row)` is zero-based and inclusive. Worksheet gridlines are a screen setting and are not printed; use a restrained table style or thin, pale borders on printable data ranges. Do not force a dense sheet to one unreadably small page. Use one page wide and an appropriate number of pages tall when necessary.
 
 ## QA Contract
 
@@ -124,16 +128,37 @@ Write `<final-path>.qa.json` beside the workbook. Use exact cells rather than gl
   "minimumFormulaCells": 12,
   "requireFormulaCaches": true,
   "requiredFormulas": [
-    {"cell": "Executive Summary!B4", "formula": "=Forecast!M7"}
+    {"cell": "Executive Summary!B5", "formula": "=Forecast!M7"}
   ],
   "expectedValues": [
-    {"cell": "Executive Summary!B4", "value": 1921385.65, "tolerance": 0.01}
+    {"cell": "Executive Summary!B5", "value": 1921385.65, "tolerance": 0.01}
   ],
   "rangeValues": [
     {"range": "Forecast!B2:M2", "values": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]}
   ],
   "requiredCharts": [
     {"sheet": "Executive Summary", "minimum": 1}
+  ]
+}
+```
+
+For a real-data workbook, assert its tables, lineage, and visible/print structure directly:
+
+```json
+{
+  "schemaVersion": 1,
+  "exactSheets": ["Raw Data", "Cleaned Data", "Shortlist"],
+  "requiredTables": [
+    {"sheet": "Cleaned Data", "name": "CleanedDataTable", "ref": "A1:H1274", "dataRows": 1273}
+  ],
+  "keyRelations": [
+    {"subsetRange": "Shortlist!A2:A13", "supersetRange": "Cleaned Data!A2:A1274", "requireUnique": true}
+  ],
+  "sheetViews": [
+    {"sheet": "Cleaned Data", "showGridLines": true, "allowHiddenRows": false, "allowHiddenColumns": false}
+  ],
+  "borderRanges": [
+    {"range": "Cleaned Data!A2:H20", "style": "thin"}
   ]
 }
 ```
@@ -159,6 +184,9 @@ Then require `<project-root>/out/report.xlsx` and `<project-root>/out/report.xls
 - Formula references use the intended absolute/mixed behavior.
 - Charts reference live worksheet ranges and have readable scales.
 - Important sheets have frozen panes and useful widths.
+- Real-data workbooks preserve raw observations, declare cleaning rules, and expose source-row or source-key lineage.
+- Raw sheets preserve exact source headers; summaries use readable labels backed by a source-header data dictionary.
+- Ranking and aggregation compare like units or disclose a defensible normalization/grouping method.
 - Print areas render coherently.
 - The QA contract targets exact cells and structures.
 - The recalculated final workbook, not the raw workbook, is passed to `docQa`.

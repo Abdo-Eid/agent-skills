@@ -3,7 +3,7 @@ name: xlsx
 description: "Create polished formula-driven XLSX workbooks, read and analyze XLSX/XLSM/CSV/TSV data, continue previously generated workbooks through durable source, and validate final XLSX artifacts. Use for spreadsheet reports, forecasts, models, tables, charts, and workbook analysis. Arbitrary binary editing of uploaded workbooks is not supported in this version."
 license: Proprietary except separately identified helper scripts; see the repository-root LICENSE and THIRD_PARTY_NOTICES.md.
 metadata:
-  version: "2.0"
+  version: "2.1"
   category: productivity
   sources:
     - Historical first-party XLSX behavior
@@ -35,12 +35,15 @@ These are host-provided values, not literal paths. Do not infer them from the sh
 ## Creation Contract
 
 1. Copy `<skills-root>/xlsx/templates/generate_workbook.py` to `<project-root>/src/generate.py` and adapt it rather than starting from an empty file.
+   For a CSV-backed cleaning or EDA task, start from `templates/generate_data_workbook.py` instead.
 2. Keep all editable logic and source data under `<project-root>/src`; write only temporary/final artifacts under `<project-root>/out`.
-3. Use formulas for every derived value. Hard-code only supplied facts, labels, and explicit assumptions.
-4. Use XlsxWriter for sheets, formulas, formats, tables, validation, charts, print areas, and navigation.
-5. Write the initial workbook to a temporary `.xlsx`, then call `scripts/recalculate_workbook.py` from the generator to produce the final `.xlsx` with refreshed caches.
-6. Write a sibling `<artifact>.qa.json` contract with exact sheets, important formulas, expected cells when known, chart requirements, and print settings.
-7. Require successful generator exit and a non-empty final artifact, then call `docQa` exactly as the document-agent instructions require.
+3. Profile real input data before designing the workbook: schema, row count, null/sentinel values, types, key uniqueness, category cardinality, and metric semantics.
+4. Preserve an immutable raw-data sheet and explicit source-row or source-key lineage when cleaning or selecting records.
+5. Use formulas for every derived value. Hard-code only supplied facts, labels, explicit assumptions, and source observations.
+6. Use XlsxWriter for sheets, formulas, formats, tables, validation, charts, print areas, and navigation.
+7. Write the initial workbook to a temporary `.xlsx`, then call `scripts/recalculate_workbook.py` from the generator to produce the final `.xlsx` with refreshed caches.
+8. Write a sibling `<artifact>.qa.json` contract with exact sheets, important formulas, expected cells when known, table and lineage assertions, chart requirements, and print settings.
+9. Require successful generator exit and a non-empty final artifact, then call `docQa` exactly as the document-agent instructions require.
 
 ## Workbook Quality
 
@@ -48,7 +51,8 @@ These are host-provided values, not literal paths. Do not infer them from the sh
 - Make inputs visually distinct without relying on color alone; add labels or an input legend.
 - Use explicit number formats for currency, percentages, dates, years, counts, and decimals.
 - Set useful column widths, row heights, frozen panes, filters, and data validation.
-- Keep gridlines and column structure visible on raw and cleaned data sheets unless the user explicitly requests a presentation-only view. Do not cover a data grid with a blanket white fill; freeze headers and identifier columns so records remain understandable while scrolling.
+- Keep worksheet gridlines and column structure visible on raw and cleaned data sheets unless the user explicitly requests a presentation-only view. Screen gridlines do not print: add thin, low-contrast cell borders or a table style when printed data rows must retain structure. Do not cover a data grid with a blanket white fill; freeze headers and identifier columns so records remain understandable while scrolling.
+- Preserve exact source headers on immutable raw data. When those names are machine-oriented, add a data dictionary that maps source headers to readable display labels, definitions, and units; use the readable labels on summaries without weakening source lineage.
 - Give charts descriptive titles, readable labels, and a secondary axis when series differ materially in scale.
 - Set print areas, orientation, repeating rows, margins, and fit-to-width so rendered QA pages remain coherent.
 - At five or more worksheets, put a linked `Index`, `Overview`, or `Navigation` sheet first.
@@ -59,6 +63,7 @@ These are host-provided values, not literal paths. Do not infer them from the sh
 - Formula cells remain formulas in the delivered workbook; never replace them with Python-computed values.
 - Use absolute and mixed references deliberately and quote sheet names containing spaces.
 - Guard expected zero denominators with an appropriate formula such as `IF` or `IFERROR` when the business meaning permits it.
+- Do not rank or aggregate values with incompatible units (for example MPG and MPGe) as though they were one scale. Normalize to a defensible common metric or rank within comparable groups and label the method.
 - Treat a missing/stale cached result as a build failure, not as zero.
 - If supplied assumptions contradict a supplied expected result, stop and report the contradiction. Never place an expected value elsewhere merely to satisfy QA.
 
@@ -68,6 +73,7 @@ These are host-provided values, not literal paths. Do not infer them from the sh
 - Use `data_only=False` to inspect formulas and `data_only=True` to inspect stored cached results.
 - Never report an empty formula cache as a numeric zero.
 - Base aggregations directly on source columns and report data-quality caveats.
+- Treat numeric sentinels and category placeholders according to column semantics; do not globally replace values such as `0`, `-1`, or `N/A` without evidence.
 
 ## Continuation Rules
 

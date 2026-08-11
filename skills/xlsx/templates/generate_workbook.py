@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -332,7 +333,7 @@ def main() -> int:
     skill_dir = resolve_xlsx_skill_dir(args.skills_root)
     recalculate = skill_dir / "scripts" / "recalculate_workbook.py"
     result = subprocess.run(
-        ["python3", str(recalculate), str(raw_path), str(output_path)],
+        [sys.executable, str(recalculate), str(raw_path), str(output_path)],
         check=False,
         text=True,
         capture_output=True,

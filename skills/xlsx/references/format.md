@@ -58,11 +58,13 @@ Use the precision requested by the user. Store percentages as decimals (`0.08` f
 - Give label columns enough width for the longest meaningful label.
 - Use wrapped text only when width expansion would make the sheet unwieldy.
 - Freeze headers and identifier columns on long tables.
-- Keep normal gridlines visible on raw and cleaned data sheets. A summary/dashboard may hide them intentionally, but do not turn the source table into a blank white canvas or hide columns merely for presentation.
+- Keep normal worksheet gridlines visible on raw and cleaned data sheets. A summary/dashboard may hide them intentionally, but do not turn the source table into a blank white canvas or hide columns merely for presentation.
+- Gridlines are an on-screen worksheet view and do not print. When printed raw/cleaned rows must remain traceable, apply a table style or thin low-contrast borders (for example `#D9E2EC`) to the printable cell range, including intentionally blank cells.
 - Use alternating row fills sparingly; table styles are preferable for large datasets.
 - Keep assumptions visible and grouped.
 - Put reconciliations near the outputs they validate.
 - Avoid decorative merged cells in data tables.
+- Do not solve machine-oriented headers by stacking a second header row inside a table. Preserve source headers on raw data and map them to readable labels, definitions, and units in a separate data dictionary; summaries and charts may use those display labels.
 
 ## Print And Render
 
@@ -72,12 +74,12 @@ Configure every sheet expected to appear in QA previews:
 sheet.set_landscape()
 sheet.set_paper(9)  # A4
 sheet.fit_to_pages(1, 0)  # one page wide, as many pages tall as the rows need
-sheet.set_repeat_rows(0, 1)
+sheet.repeat_rows(0, 1)  # zero-based, inclusive
 sheet.set_margins(0.25, 0.25, 0.5, 0.5)
 sheet.set_header("&LNorthstar&CForecast&R&A")
 sheet.set_footer("&LSource data&CPage &P of &N&R&D")
 sheet.print_area("A1:M20")
-sheet.hide_gridlines(0)  # retain the normal spreadsheet grid
+sheet.hide_gridlines(0)  # retain on-screen worksheet gridlines
 ```
 
 Use portrait for narrow summaries and landscape for time-series or wide tables. Data sheets normally use one page wide and unlimited pages tall; never shrink hundreds of rows onto one page. Summary sheets may use a bounded height when the result remains readable.
