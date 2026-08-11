@@ -12,9 +12,9 @@ Author a Node generator with the baked `docx` package under `/workspace/projects
 
 1. Choose page size, margins, heading hierarchy, and a restrained palette before adding content. Use explicit document styles instead of ad-hoc formatting.
 2. Create a title page or opening title block only when it serves the document type. Use Heading 1 through Heading 3 semantically so navigation remains usable.
-3. Use tables for aligned data, callout tables or shaded paragraphs for emphasis, and captions for figures. Set table widths, cell margins, and header treatment deliberately.
+3. Use tables for aligned data, callout tables or shaded paragraphs for emphasis, and captions for figures. Set table widths, cell margins, and header treatment deliberately. Build header text as runs in an array, for example `paragraph([run("Decision")])`; never pass a `TextRun` through a helper that expects plain text.
 4. Keep paragraphs readable with consistent spacing and avoid empty paragraphs for layout. Use page breaks only at real section boundaries.
-5. Add page numbers, a header/footer, and a contents or overview section for documents of eight or more pages.
+5. Add page numbers, a header/footer, and a contents or overview section for documents of eight or more pages. Use `new TextRun({ children: [PageNumber.CURRENT] })` for the current-page field and tab stops or a footer table for alignment, never literal spaces.
 6. Build to `out/<descriptive-name>.docx` and call `docQa`. It validates the package and blocks delivery if LibreOffice cannot render it.
 
 ## Quality rules
@@ -24,6 +24,9 @@ Author a Node generator with the baked `docx` package under `/workspace/projects
 - Prefer real Word paragraphs, runs, lists, tables, images, and styles over embedded screenshots of text.
 - Keep images local under `assets/`, set their dimensions explicitly, and preserve their aspect ratio.
 - Preserve provided citations and source wording; do not fabricate citations.
+- Give the document explicit page dimensions and margins. Standard creation uses high-level `docx` objects and `Packer.toBuffer()`; direct OOXML editing is unnecessary.
+- Before delivery, reconcile extracted output text with the exact title, contents entries, table headers, representative table values, and rendered page numbers required by the task.
+- A successful deterministic `docQa` result proves package and render checks, not visual acceptance when `visionRan` is false. Inspect every rendered page before making a visual-quality claim.
 
 ## Continuation
 

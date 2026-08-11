@@ -8,7 +8,7 @@ Agent Skills is a collection of specialized skills for creating professional doc
 |---|---|
 | [PDF](skills/pdf) | Creates polished, print-ready reports, proposals, guides, and papers. |
 | [PPTX](skills/pptx) | Creates editable PowerPoint presentations with structured narratives and professional layouts. |
-| [XLSX](skills/xlsx) | Creates, reads, analyzes, edits, formats, and validates Excel and tabular data files. |
+| [XLSX](skills/xlsx) | Creates polished formula-driven workbooks, analyzes spreadsheet data, and continues generated workbooks through durable source. |
 | [DOCX](skills/docx) | Creates professional, editable Word documents with reusable styles and structured content. |
 | [BI Dashboard](skills/bi-dashboard) | Creates self-contained HTML dashboards for analytics, KPIs, finance, sales, and operations reporting. |
 
@@ -17,6 +17,19 @@ Agent Skills is a collection of specialized skills for creating professional doc
 Each directory under `skills/` contains a `SKILL.md` entry point with instructions for that capability. Skills may also include focused references, helper scripts, templates, or scaffolds.
 
 The complete skill catalog and output formats are listed in [`registry/skills.json`](registry/skills.json).
+
+## Host Paths
+
+Repository paths are relative and do not assume a particular container or installation directory. A consuming host supplies:
+
+- `<skills-root>`: the directory containing all installed skill directories, such as `<skills-root>/xlsx` and `<skills-root>/pdf`.
+- `<project-root>`: the writable directory owned by the active task or project.
+
+Hosts may expose the shared skills root as `AGENT_SKILLS_ROOT`. A skill must not infer the writable project from the process working directory.
+
+## Dependencies
+
+Every dependency must be installed before an agent starts. See [`DEPENDENCIES.md`](DEPENDENCIES.md) for per-skill setup and [`registry/dependencies.json`](registry/dependencies.json) for the machine-readable manifest.
 
 ## License
 

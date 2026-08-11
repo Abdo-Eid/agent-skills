@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "imageTarget": {
+    "os": "Debian 12 Bookworm",
+    "node": "22.x",
+    "python": "3.11.x",
+    "browser": "Playwright Chromium headless shell",
+    "office": "LibreOffice from Debian Bookworm"
+  },
+  "shared": {
+    "system": [
+      "python3",
+      "python3-pip",
+      "zip",
+      "unzip",
+      "poppler-utils",
+      "imagemagick",
+      "fonts-dejavu",
+      "fonts-liberation",
+      "fonts-noto-core",
+      "fonts-noto-cjk",
+      "fonts-noto-color-emoji"
+    ],
+    "contract": "Dependencies are installed before agent startup; runtime installs are forbidden."
+  },
+  "profiles": {
+    "pdf": {
+      "python": [
+        { "name": "reportlab", "version": "5.0.0", "purpose": "authoring" },
+        { "name": "pypdf", "version": "6.15.0", "purpose": "inspection and manipulation" },
+        { "name": "Pillow", "version": "12.3.0", "purpose": "image handling" },
+        { "name": "matplotlib", "version": "3.11.1", "purpose": "optional charts", "optional": true }
+      ],
+      "node": [
+        { "name": "pdf-lib", "version": "1.17.1", "purpose": "optional JavaScript PDF route", "optional": true },
+        { "name": "playwright", "version": "1.61.1", "purpose": "optional HTML/CSS rendering", "optional": true }
+      ],
+      "system": ["qpdf", "poppler-utils", "imagemagick"],
+      "browser": ["chromium-headless-shell"]
+    },
+    "pptx": {
+      "node": [
+        { "name": "pptxgenjs", "version": "4.0.1", "purpose": "authoring" }
+      ],
+      "python": [
+        { "name": "defusedxml", "version": "0.7.1", "purpose": "QA validation" }
+      ],
+      "system": ["libreoffice-core", "libreoffice-impress", "poppler-utils", "imagemagick"]
+    },
+    "xlsx": {
+      "python": [
+        { "name": "XlsxWriter", "version": "3.2.9", "purpose": "authoring" },
+        { "name": "openpyxl", "version": "3.1.5", "purpose": "read-only analysis and QA" },
+        { "name": "pandas", "version": "3.0.5", "purpose": "analysis" },
+        { "name": "defusedxml", "version": "0.7.1", "purpose": "QA validation" }
+      ],
+      "system": ["libreoffice-core", "libreoffice-calc", "poppler-utils", "imagemagick"]
+    },
+    "docx": {
+      "node": [
+        { "name": "docx", "version": "9.7.1", "purpose": "authoring" }
+      ],
+      "python": [
+        { "name": "defusedxml", "version": "0.7.1", "purpose": "QA validation" }
+      ],
+      "system": ["libreoffice-core", "libreoffice-writer", "poppler-utils", "imagemagick"]
+    },
+    "bi-dashboard": {
+      "node": [
+        { "name": "react", "version": "^19.2.6", "purpose": "authoring" },
+        { "name": "react-dom", "version": "^19.2.6", "purpose": "authoring" },
+        { "name": "echarts", "version": "^6.1.0", "purpose": "charts" },
+        { "name": "echarts-for-react", "version": "^3.0.6", "purpose": "charts" },
+        { "name": "vite", "version": "^8.0.14", "purpose": "build" },
+        { "name": "@vitejs/plugin-react", "version": "^6.0.2", "purpose": "build" },
+        { "name": "vite-plugin-singlefile", "version": "^2.3.3", "purpose": "single-file output" },
+        { "name": "playwright", "version": "1.61.1", "purpose": "QA rendering" }
+      ],
+      "python": [
+        { "name": "duckdb", "version": "1.5.5", "purpose": "analysis" },
+        { "name": "pandas", "version": "3.0.5", "purpose": "analysis" }
+      ],
+      "browser": ["chromium-headless-shell"]
+    }
+  }
+}

@@ -6,16 +6,9 @@ This document identifies components in the Agent Skills pack that are not govern
 
 The following files are available under the MIT License:
 
-- `skills/xlsx/scripts/formula_check.py`
-- `skills/xlsx/scripts/libreoffice_recalc.py`
-- `skills/xlsx/scripts/shared_strings_builder.py`
-- `skills/xlsx/scripts/style_audit.py`
-- `skills/xlsx/scripts/xlsx_add_column.py`
-- `skills/xlsx/scripts/xlsx_insert_row.py`
-- `skills/xlsx/scripts/xlsx_pack.py`
-- `skills/xlsx/scripts/xlsx_reader.py`
-- `skills/xlsx/scripts/xlsx_shift_rows.py`
-- `skills/xlsx/scripts/xlsx_unpack.py`
+- `skills/xlsx/scripts/read_workbook.py`
+- `skills/xlsx/scripts/recalculate_workbook.py`
+- `skills/xlsx/scripts/validate_workbook.py`
 
 Copyright (c) 2026 Abdulhamed Samy Eid
 

@@ -7,7 +7,8 @@
   "distributionRepository": "https://github.com/Abdo-Eid/agent-skills",
   "runtimeContract": {
     "skillNames": ["pdf", "pptx", "xlsx", "docx", "bi-dashboard"],
-    "noRuntimeInstalls": true
+    "noRuntimeInstalls": true,
+    "dependencyManifest": "registry/dependencies.json"
   },
   "files": [
     {
@@ -36,14 +37,14 @@
     },
     {
       "path": "skills/xlsx except skills/xlsx/scripts/*.py",
-      "origin": "Historical first-party implementation",
-      "evidence": "Survived the aa519f9 replacement and was retained from prior agent-skills history",
+      "origin": "First-party rewrite",
+      "evidence": "New XlsxWriter workflow informed by historical workbook behavior and official XlsxWriter, openpyxl, pandas, and LibreOffice documentation",
       "license": "LicenseRef-Proprietary"
     },
     {
       "path": "skills/xlsx/scripts/*.py",
-      "origin": "Historical first-party implementation",
-      "evidence": "Authored by the Abdo-Eid account and published with SPDX MIT identifiers",
+      "origin": "First-party helpers",
+      "evidence": "The current read, recalculation, and validation helpers were written for the XlsxWriter rewrite and published with SPDX MIT identifiers",
       "license": "MIT"
     },
     {
