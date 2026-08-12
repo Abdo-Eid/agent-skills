@@ -135,7 +135,7 @@ def profile(path: Path) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Print a compact planning profile for a BI dashboard input file.")
-    parser.add_argument("input", help="CSV, TSV, XLSX, or XLS file to profile")
+    parser.add_argument("input", help="CSV or XLSX file to profile")
     args = parser.parse_args()
     sys.stdout.write(profile(Path(args.input).expanduser().resolve()) + "\n")
 

@@ -29,7 +29,7 @@ Hosts may expose the shared skills root as `AGENT_SKILLS_ROOT`. A skill must not
 
 ## Dependencies
 
-Every dependency must be installed before an agent starts. See [`DEPENDENCIES.md`](DEPENDENCIES.md) for per-skill setup and [`registry/dependencies.json`](registry/dependencies.json) for the machine-readable manifest.
+Dependencies are provided by the consuming host. The BI dashboard is the one project-local exception: its portable initializer copies the source starter to a writable project and runs `npm ci` from the committed lockfile. See [`DEPENDENCIES.md`](DEPENDENCIES.md) for per-skill setup and [`registry/dependencies.json`](registry/dependencies.json) for the machine-readable manifest.
 
 ## License
 

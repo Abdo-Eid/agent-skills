@@ -10,8 +10,8 @@ Continuation edits the durable generator source and rebuilds the workbook. It do
 4. Keep unrelated sheet names, formulas, formats, charts, and assertions unchanged.
 5. Re-run the same generator entry.
 6. Require a recalculated non-empty final workbook.
-7. Call `docQa` with changed scope when the application contract permits it.
-8. Deliver the new revision only after QA passes.
+7. Rerun the relevant portable validation and rendered-sheet checks.
+8. Hand the rebuilt artifact to the consuming host for any acceptance and delivery sequence.
 
 ## Common Changes
 

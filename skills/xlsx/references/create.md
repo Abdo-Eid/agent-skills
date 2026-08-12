@@ -1,6 +1,6 @@
 # Create A New XLSX Workbook
 
-Use this route only for a new workbook. XlsxWriter owns package creation; the generator owns workbook content; LibreOffice owns recalculation; `docQa` owns validation and visual review.
+Use this route only for a new workbook. XlsxWriter owns package creation, the generator owns workbook content, and LibreOffice supplies calculated caches during the portable recalculation step.
 
 ## Start From The Scaffold
 
@@ -34,7 +34,7 @@ Before writing source, decide:
 - Tables, filters, validation, and frozen panes.
 - Chart purpose, ranges, axis scales, and labels.
 - Print area, orientation, repeating rows, and fit-to-width.
-- Exact QA assertions that prove row counts, table bounds, key lineage, formulas, outputs, and visible/print structure.
+- Exact validation assertions that prove row counts, table bounds, key lineage, formulas, outputs, and visible/print structure.
 
 ## Build With XlsxWriter
 
@@ -104,7 +104,7 @@ Use a secondary axis only when units or magnitudes differ enough to flatten one 
 
 ## Print Setup
 
-Every important sheet needs deliberate print behavior because `docQa` renders the workbook:
+Every important sheet needs deliberate print behavior because a compatible office renderer must produce readable pages:
 
 ```python
 forecast.set_landscape()
@@ -174,7 +174,7 @@ python <skills-root>/xlsx/scripts/recalculate_workbook.py \
   <project-root>/out/.report.raw.xlsx <project-root>/out/report.xlsx
 ```
 
-Then require `<project-root>/out/report.xlsx` and `<project-root>/out/report.xlsx.qa.json` to be non-empty. Call `docQa` through the application tool, not through the shell.
+Then require `<project-root>/out/report.xlsx` and `<project-root>/out/report.xlsx.qa.json` to be non-empty. Run `scripts/validate_workbook.py --json` against the final workbook and inspect representative rendered sheets before handing the artifact to a host.
 
 ## Pre-Delivery Checklist
 
@@ -188,5 +188,5 @@ Then require `<project-root>/out/report.xlsx` and `<project-root>/out/report.xls
 - Raw sheets preserve exact source headers; summaries use readable labels backed by a source-header data dictionary.
 - Ranking and aggregation compare like units or disclose a defensible normalization/grouping method.
 - Print areas render coherently.
-- The QA contract targets exact cells and structures.
-- The recalculated final workbook, not the raw workbook, is passed to `docQa`.
+- The validation contract targets exact cells and structures.
+- The recalculated final workbook, not the raw workbook, is passed to host validation.

@@ -4,25 +4,26 @@ Use this reference when choosing chart types, adding ECharts registrations, or h
 
 ## Registration
 
-The scaffold uses tree-shaken ECharts imports in `scaffold/src/Chart.jsx`. Register only chart and component types the dashboard uses.
+The fixed scaffold wrapper pre-registers bar, line, pie/donut, scatter, and mark-line thresholds. Do not edit or replace it during a dashboard task.
 
-Common additions:
+The underlying registration includes:
 
 ```jsx
-import { ScatterChart, FunnelChart, TreemapChart, RadarChart } from 'echarts/charts'
-import { VisualMapComponent, RadarComponent } from 'echarts/components'
+import { BarChart, LineChart, PieChart, ScatterChart } from 'echarts/charts'
+import { MarkLineComponent } from 'echarts/components'
 
 echarts.use([
+  BarChart,
+  LineChart,
+  PieChart,
   ScatterChart,
-  FunnelChart,
-  TreemapChart,
-  RadarChart,
-  VisualMapComponent,
-  RadarComponent,
+  MarkLineComponent,
 ])
 ```
 
 Keep `SVGRenderer`. Do not switch to canvas.
+
+The fixed wrapper disables animation and owns the dashboard readiness marker. Do not add a manual `window.__DASHBOARD_READY__` assignment in application code.
 
 ## Chart Selection
 
@@ -91,13 +92,23 @@ Scatter/outliers:
 ```js
 {
   color: ['#4f72ad'],
-  tooltip: { trigger: 'item' },
+  tooltip: { trigger: 'item', formatter: ({ data }) => `${data.name}<br/>${xLabel}: ${data.value[0]}<br/>${yLabel}: ${data.value[1]}` },
   grid: { left: 52, right: 24, top: 24, bottom: 44 },
   xAxis: { type: 'value', name: xLabel },
   yAxis: { type: 'value', name: yLabel },
-  series: [{ type: 'scatter', data: points, symbolSize: 10 }],
+  series: [{
+    type: 'scatter',
+    data: points,
+    symbolSize: 10,
+    markLine: {
+      silent: true,
+      data: [{ xAxis: xTarget }, { yAxis: yTarget }],
+    },
+  }],
 }
 ```
+
+Use scatter for relationships and outliers. Put the business question in the surrounding accessible title/subtitle and explain target quadrants there. Avoid per-point labels when they overlap; preserve readable axes and tooltips, then pair dense entity plots with a ranked exception list when the task needs one.
 
 ## Map Rules
 
@@ -109,6 +120,8 @@ Avoid remote GeoJSON and CDN map scripts. If map assets are not available locall
 
 - Titles should state the business question or finding, not just the metric name.
 - Use short axis labels; move long explanations into subtitles or insight panels.
+- The wrapper defaults visible chart text to 14 px. Keep all visible chart text at 12 px or larger, including axis labels, legends, names, and data labels.
+- When labels do not fit, reduce tick density, abbreviate unambiguously, rotate category labels, use a wider card, or switch chart types. Do not reduce chart text below 12 px.
 - Include denominators when showing rates.
 - Sort bars by business relevance unless time/order is meaningful.
 - Group small categories into "Other" only when the grouping rule is explicit and counts reconcile.

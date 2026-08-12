@@ -1,6 +1,6 @@
 # Agent Skills Dependencies
 
-This document lists the runtimes, packages, binaries, browsers, and fonts needed by each skill. Install dependencies before an agent starts; the skills forbid runtime package installation and replacement skill downloads. The machine-readable equivalent is [`registry/dependencies.json`](registry/dependencies.json).
+This document lists the runtimes, packages, binaries, browsers, and fonts needed by each skill. Skills do not download replacement skills or mutate dependency manifests at runtime. The BI dashboard is the one exception to preinstalled JavaScript dependencies: its initializer runs a project-local `npm ci` from its committed lockfile. The machine-readable equivalent is [`registry/dependencies.json`](registry/dependencies.json).
 
 ## Dependency Classes
 
@@ -12,7 +12,7 @@ This document lists the runtimes, packages, binaries, browsers, and fonts needed
 | Optional route | Required only when the skill selects that documented generation route |
 | Shared | Used across multiple skills or by repository/runtime setup |
 
-The Zynda document runtime provides every listed dependency in one immutable image. Other hosts may omit QA dependencies when they provide equivalent validators and renderers, but the skill instructions assume a `docQa`-style validation boundary exists.
+Hosts provide the dependencies needed by the selected skill. Other hosts may choose their own validation and rendering policy; format skills define portable authoring checks rather than assuming a particular host acceptance tool.
 
 ## Image Target
 
@@ -51,7 +51,7 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 | Python | `Pillow` | 12.3.0 | Image normalization and dimensions | MIT-CMU |
 | Python | `matplotlib` | 3.11.1 | Optional local chart generation | PSF-compatible |
 | Node | `pdf-lib` | 1.17.1 | Optional JavaScript PDF manipulation route | MIT |
-| Node | `playwright` | 1.61.1 | Optional HTML/CSS-to-PDF route | Apache-2.0 |
+| Node | `playwright` | 1.62.1 | Optional HTML/CSS-to-PDF route | Apache-2.0 |
 
 ### QA
 
@@ -115,25 +115,27 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 
 ## BI Dashboard
 
-The dashboard scaffold has its own [`package.json`](skills/bi-dashboard/scaffold/package.json). Install it before the agent starts.
+The dashboard source starter has its own [`package.json`](skills/bi-dashboard/scaffold/package.json) and committed lockfile. Initialize a writable project with `skills/bi-dashboard/scripts/init-project.mjs`; it runs the only supported project-local dependency installation, `npm ci --no-audit --no-fund`.
 
 ### Authoring And Data Preparation
 
 | Ecosystem | Package | Declared version/range | Purpose | License |
 |---|---|---:|---|---|
-| Node | `react` | ^19.2.6 | Dashboard UI | MIT |
-| Node | `react-dom` | ^19.2.6 | React DOM renderer | MIT |
-| Node | `echarts` | ^6.1.0 | Charts and visualization | Apache-2.0 |
-| Node | `echarts-for-react` | ^3.0.6 | React ECharts adapter | MIT |
-| Node | `vite` | ^8.0.14 | Dashboard build | MIT |
-| Node | `@vitejs/plugin-react` | ^6.0.2 | React build integration | MIT |
-| Node | `vite-plugin-singlefile` | ^2.3.3 | Portable single-file HTML output | MIT |
+| Node | `react` | 19.2.8 | Dashboard UI | MIT |
+| Node | `react-dom` | 19.2.8 | React DOM renderer | MIT |
+| Node | `echarts` | 6.1.0 | Charts and visualization | Apache-2.0 |
+| Node | `echarts-for-react` | 3.0.6 | React ECharts adapter | MIT |
+| Node | `vite` | 8.2.1 | Dashboard build | MIT |
+| Node | `@vitejs/plugin-react` | 6.0.5 | React build integration | MIT |
+| Node | `vite-plugin-singlefile` | 2.3.3 | Portable single-file HTML output | MIT |
+| Node | `playwright` | 1.62.1 | Browser preflight | Apache-2.0 |
 | Python | `duckdb` | 1.5.5 | Local analytical queries and aggregation | MIT |
-| Python | `pandas` | 3.0.5 | Input normalization and tabular preparation | BSD-3-Clause |
+| Python | `openpyxl` | 3.1.5 | XLSX input | MIT |
+| Python | `pandas` | 3.0.5 | CSV and XLSX input preparation | BSD-3-Clause |
 
 ### QA
 
-- Playwright 1.61.1
+- Playwright 1.62.1
 - Chromium headless shell
 - Shared fonts
 
@@ -156,9 +158,9 @@ pip3 install \
 
 ```bash
 npm install -g \
-  playwright@1.61.1 pptxgenjs@4.0.1 docx@9.7.1 pdf-lib@1.17.1
+  playwright@1.62.1 pptxgenjs@4.0.1 docx@9.7.1 pdf-lib@1.17.1
 npx playwright install --only-shell chromium
-npm install --prefix skills/bi-dashboard/scaffold
+node skills/bi-dashboard/scripts/init-project.mjs --target /path/to/dashboard-project
 ```
 
 ## Runtime Verification

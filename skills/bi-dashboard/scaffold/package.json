@@ -9,14 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "echarts": "^6.1.0",
-    "echarts-for-react": "^3.0.6",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "echarts": "6.1.0",
+    "echarts-for-react": "3.0.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-singlefile": "^2.3.3"
+    "@vitejs/plugin-react": "6.0.5",
+    "playwright": "1.62.1",
+    "vite": "8.2.1",
+    "vite-plugin-singlefile": "2.3.3"
   }
 }

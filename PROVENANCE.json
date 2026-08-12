@@ -8,6 +8,9 @@
   "runtimeContract": {
     "skillNames": ["pdf", "pptx", "xlsx", "docx", "bi-dashboard"],
     "noRuntimeInstalls": true,
+    "allowedProjectLocalInstalls": [
+      "skills/bi-dashboard/scripts/init-project.mjs runs npm ci --no-audit --no-fund against the copied starter's committed lockfile"
+    ],
     "dependencyManifest": "registry/dependencies.json"
   },
   "files": [
@@ -49,8 +52,8 @@
     },
     {
       "path": "skills/bi-dashboard",
-      "origin": "Historical first-party implementation",
-      "evidence": "Dashboard implementation at agent-skills commit 8df18b1abbdad1e2f90cf19c22549e7ce79db315; retained without functional changes",
+      "origin": "First-party hardened implementation",
+      "evidence": "Historical dashboard behavior at agent-skills commit 8df18b1abbdad1e2f90cf19c22549e7ce79db315, then independently hardened with a source-only starter, portable initializer, static validator, browser preflight, and current stable dependency pins",
       "license": "LicenseRef-Proprietary"
     }
   ],

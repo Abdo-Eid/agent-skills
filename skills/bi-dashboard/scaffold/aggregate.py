@@ -1,169 +1,87 @@
+"""Domain-neutral deterministic starter. Replace with task-specific aggregation."""
+
+import json
 from datetime import UTC, datetime
 from pathlib import Path
-import sys
-
-import duckdb
 
 
 ROOT = Path(__file__).resolve().parent
-SKILL_ROOT = ROOT.parent
-sys.path.insert(0, str(SKILL_ROOT / "scripts"))
-
-from ingest import (
-    file_hash,
-    load_input_dataframe,
-    records,
-    register_dataframe,
-    require_equal,
-    scalar_int,
-    write_json,
-)
-
-
-INPUT = (ROOT / ".." / ".." / ".." / "uploads" / "leads-10000.csv").resolve()
 OUTPUT = ROOT / "data" / "dashboard-data.json"
 
 
 def main() -> None:
-    if not INPUT.exists():
-        raise FileNotFoundError(f"Input file not found: {INPUT}")
-
-    conn = duckdb.connect()
-    df = load_input_dataframe(INPUT)
-    if df.empty:
-        raise ValueError(f"Input file has no usable rows: {INPUT}")
-
-    register_dataframe(conn, df)
-    source = "input_data"
-
-    columns = records(conn, f"DESCRIBE SELECT * FROM {source}")
-    row_count = scalar_int(conn, f"SELECT count(*) FROM {source}")
-    if row_count <= 0:
-        raise ValueError(f"No rows loaded from {INPUT.name}")
-
-    deal_stages = records(conn, f"""
-        SELECT DISTINCT deal_stage FROM {source}
-        WHERE deal_stage IS NOT NULL
-        ORDER BY deal_stage
-    """)
-    stage_labels = [r["deal_stage"] for r in deal_stages]
-
-    stage_dist = records(conn, f"""
-        SELECT deal_stage, count(*) AS count
-        FROM {source}
-        WHERE deal_stage IS NOT NULL
-        GROUP BY deal_stage
-        ORDER BY count DESC
-    """)
-
-    source_dist = records(conn, f"""
-        SELECT source, count(*) AS count
-        FROM {source}
-        WHERE source IS NOT NULL
-        GROUP BY source
-        ORDER BY count DESC
-    """)
-    source_labels = [r["source"] for r in source_dist]
-
-    source_conversion = records(conn, f"""
-        SELECT source,
-            count(*) AS total,
-            count(*) FILTER (WHERE deal_stage = 'Closed Won') AS won,
-            ROUND(count(*) FILTER (WHERE deal_stage = 'Closed Won') * 100.0 / NULLIF(count(*), 0), 1) AS win_rate
-        FROM {source}
-        WHERE source IS NOT NULL
-        GROUP BY source
-        ORDER BY total DESC
-    """)
-
-    pipeline_order = {"New Lead": 1, "Contacted": 2, "Qualified": 3, "Proposal Sent": 4, "Negotiation": 5, "Closed Won": 6, "Closed Lost": 7, "Disqualified": 8, "On Hold": 9, "Re-engagement": 10}
-    stage_dist_pipeline = sorted(stage_dist, key=lambda r: pipeline_order.get(r["deal_stage"], 99))
-
-    owner_dist = records(conn, f"""
-        SELECT lead_owner, count(*) AS count
-        FROM {source}
-        WHERE lead_owner IS NOT NULL
-        GROUP BY lead_owner
-        ORDER BY count DESC
-        LIMIT 10
-    """)
-
-    stage_source = records(conn, f"""
-        SELECT deal_stage, source, count(*) AS count
-        FROM {source}
-        WHERE deal_stage IS NOT NULL AND source IS NOT NULL
-        GROUP BY deal_stage, source
-        ORDER BY deal_stage, count DESC
-    """)
-
-    closed_won = scalar_int(conn, f"SELECT count(*) FROM {source} WHERE deal_stage = 'Closed Won'")
-    closed_lost = scalar_int(conn, f"SELECT count(*) FROM {source} WHERE deal_stage = 'Closed Lost'")
-    active_pipeline = scalar_int(conn, f"SELECT count(*) FROM {source} WHERE deal_stage IN ('Contacted', 'Qualified', 'Negotiation')")
-    on_hold = scalar_int(conn, f"SELECT count(*) FROM {source} WHERE deal_stage = 'On Hold'")
-
-    win_rate = round(closed_won * 100.0 / row_count, 1)
-
-    stage_total = sum(r["count"] for r in stage_dist)
-    require_equal("stage distribution total", stage_total, row_count)
-
-    source_total = sum(r["count"] for r in source_dist)
-    require_equal("source distribution total", source_total, row_count)
-
     payload = {
         "metadata": {
-            "sourceFile": INPUT.name,
-            "inputHash": file_hash(INPUT),
+            "mode": "domain-neutral deterministic starter",
             "generatedAt": datetime.now(UTC).isoformat(),
-            "rowCount": row_count,
-            "columns": [column["column_name"] for column in columns],
+            "replaceBeforeDelivery": True,
+        },
+        "assessment": {
+            "title": "Replace this assessment with a measured task conclusion",
+            "detail": "The starter demonstrates portable dashboard capabilities without assuming a business domain.",
         },
         "kpis": [
-            {"label": "Total Leads", "value": f"{row_count:,}", "note": "Pipeline volume over all time"},
-            {"label": "Win Rate", "value": f"{win_rate}%", "note": f"{closed_won:,} Closed Won of {row_count:,} total"},
-            {"label": "Active Pipeline", "value": f"{active_pipeline:,}", "note": "Contacted, Qualified, Negotiation stages"},
-            {"label": "Stalled", "value": f"{on_hold:,}", "note": "On Hold — needs re-engagement"},
+            {"label": "Primary total", "value": "6,750", "note": "Sum across the displayed periods"},
+            {"label": "Current rate", "value": "81.0%", "note": "Example target: at least 80.0%"},
+            {"label": "Group count", "value": "4", "note": "Distinct groups in this sample"},
+            {"label": "Flagged groups", "value": "1", "note": "Structured threshold exception"},
         ],
         "charts": {
-            "stageDistribution": stage_dist_pipeline,
-            "sourceDistribution": source_dist,
-            "sourceConversion": source_conversion,
-            "ownerDistribution": owner_dist,
-            "stageSourceMatrix": stage_source,
-            "stages": stage_labels,
-            "sources": source_labels,
+            "trend": [
+                {"period": "P1", "primary": 980, "rate": 76.0},
+                {"period": "P2", "primary": 1040, "rate": 77.5},
+                {"period": "P3", "primary": 1090, "rate": 79.0},
+                {"period": "P4", "primary": 1160, "rate": 80.5},
+                {"period": "P5", "primary": 1210, "rate": 82.0},
+                {"period": "P6", "primary": 1270, "rate": 81.0},
+            ],
+            "groups": [
+                {"group": "Group A", "primary": 1820, "secondary": 72},
+                {"group": "Group B", "primary": 1710, "secondary": 84},
+                {"group": "Group C", "primary": 1640, "secondary": 118},
+                {"group": "Group D", "primary": 1580, "secondary": 91},
+            ],
+            "composition": [
+                {"category": "Category 1", "value": 34},
+                {"category": "Category 2", "value": 28},
+                {"category": "Category 3", "value": 22},
+                {"category": "Category 4", "value": 16},
+            ],
+            "relationship": [
+                {"group": "Group A", "x": 84, "y": 72},
+                {"group": "Group B", "x": 81, "y": 84},
+                {"group": "Group C", "x": 76, "y": 118},
+                {"group": "Group D", "x": 79, "y": 91},
+            ],
         },
         "insights": [
-            {
-                "finding": f"On Hold is the largest stage at {on_hold:,} leads ({round(on_hold * 100 / row_count, 1)}% of total), exceeding even Closed Won ({closed_won:,}).",
-                "meaning": "More than 1 in 10 leads are stalled — this pipeline friction delays revenue and increases deal decay risk."
-            },
-            {
-                "finding": f"Overall win rate is {win_rate}% ({closed_won:,} of {row_count:,}), with {closed_lost:,} ({round(closed_lost * 100 / row_count, 1)}%) lost and 2,017 ({round((active_pipeline + on_hold) * 100 / row_count, 1)}%) still in progress.",
-                "meaning": "Nearly half the pipeline is unresolved. Improving early-stage qualification could shift more leads toward won rather than lost or stalled."
-            },
-            {
-                "finding": f"Active stages (Contacted through Negotiation) hold {active_pipeline:,} leads — only {round(active_pipeline * 100 / row_count, 1)}% of total pipeline.",
-                "meaning": "The active deal pipeline is relatively thin compared to stalled and closed volume. Pipeline coverage may be insufficient for consistent revenue.",
-            },
+            {"finding": "The primary measure rises from 980 in P1 to 1,270 in P6.", "meaning": "The sample demonstrates a measured trend statement tied directly to generated values."},
+            {"finding": "Group C is the only group above the secondary threshold of 100.", "meaning": "The sample demonstrates how a structured exception supports a focused action."},
         ],
         "actions": [
-            {
-                "finding": f"{on_hold:,} deals stalled in On Hold.",
-                "action": "Audit all On Hold deals within 7 days. Assign owners to re-engage or close out within 14 days to reduce pipeline bloat."
-            },
-            {
-                "finding": f"Cold Email leads convert at 12.5% — the highest among all sources — while Social Media converts at just 7.5%.",
-                "action": "Increase Cold Email investment and review Social Media lead quality. Run a 30-day A/B test reallocating 20% of Social budget to Email."
-            },
-            {
-                "finding": f"Referral is the second-highest volume source (530 leads) but converts at only 9.2%, below the {win_rate}% average.",
-                "action": "Interview recent referral leads to identify qualification gaps. Consider tightening referral intake criteria."
-            },
+            {"finding": "Group C has a secondary value of 118 against a target of at most 100.", "action": "Replace this with a task-specific owner and measurable response."},
+        ],
+        "exceptions": [
+            {"entity": "Group C", "periods": ["P6"], "metric": "Secondary measure", "actual": 118, "unit": "units", "target": 100, "operator": "<=", "variance": 18, "driver": "Replace with an evidence-backed task driver", "owner": "Task owner", "action": "Replace with a task-specific action"},
         ],
     }
 
-    write_json(OUTPUT, payload)
-    print(f"Wrote {OUTPUT.name}: {row_count:,} rows, {len(source_labels)} sources, {len(stage_labels)} stages.")
+    trend_total = sum(row["primary"] for row in payload["charts"]["trend"])
+    group_total = sum(row["primary"] for row in payload["charts"]["groups"])
+    if trend_total != 6750 or group_total != trend_total:
+        raise ValueError("Starter primary totals no longer reconcile.")
+    if len(payload["charts"]["trend"]) != 6 or len(payload["charts"]["groups"]) != 4:
+        raise ValueError("Starter period or group count changed unexpectedly.")
+    if sum(row["value"] for row in payload["charts"]["composition"]) != 100:
+        raise ValueError("Starter composition no longer reconciles to 100 percent.")
+    exception_keys = {(row["entity"], row["metric"], tuple(row["periods"])) for row in payload["exceptions"]}
+    if len(payload["exceptions"]) != 1 or len(exception_keys) != 1:
+        raise ValueError("Starter exception keys no longer reconcile.")
+    if any(not rows for rows in payload["charts"].values()):
+        raise ValueError("A required starter chart dataset is empty.")
+
+    OUTPUT.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    print("Wrote dashboard-data.json: domain-neutral deterministic starter.")
 
 
 if __name__ == "__main__":

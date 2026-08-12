@@ -7,7 +7,7 @@ import duckdb
 import pandas as pd
 
 
-SUPPORTED_INPUTS = {".csv", ".tsv", ".xlsx", ".xls"}
+SUPPORTED_INPUTS = {".csv", ".xlsx"}
 
 
 def file_hash(path: Path, algorithm: str = "sha256") -> str:
@@ -65,10 +65,9 @@ def likely_header_row(raw: pd.DataFrame, max_rows: int = 10) -> int:
 
 
 def read_csv_with_header_detection(path: Path) -> pd.DataFrame:
-    separator = "\t" if path.suffix.lower() == ".tsv" else ","
-    raw = pd.read_csv(path, sep=separator, header=None, dtype=object, nrows=25)
+    raw = pd.read_csv(path, header=None, dtype=object, nrows=25)
     header = likely_header_row(raw)
-    df = pd.read_csv(path, sep=separator, header=header, dtype=object)
+    df = pd.read_csv(path, header=header, dtype=object)
     return compact_dataframe(df)
 
 
@@ -100,7 +99,7 @@ def load_input_dataframe(path: Path) -> pd.DataFrame:
         supported = ", ".join(sorted(SUPPORTED_INPUTS))
         raise ValueError(f"Unsupported input type {suffix!r}. Supported: {supported}")
 
-    if suffix in {".csv", ".tsv"}:
+    if suffix == ".csv":
         return read_csv_with_header_detection(path)
     return read_excel_first_sheet(path)
 

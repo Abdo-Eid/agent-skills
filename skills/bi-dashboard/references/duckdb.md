@@ -217,7 +217,13 @@ if total_rows != grouped_total:
     )
 ```
 
-The fixed `scripts/ingest.py` provides `require_equal(a, b, label)` for this pattern.
+The fixed `scripts/ingest.py` provides `require_equal(label, actual, expected)` for this pattern.
+
+## Metric Grain And Comparisons
+
+Define source grain, selected-filter grain, aggregation, weighting, denominator, comparison period, supported filters, and unavailable behavior before querying. Weight ratios by their relevant additive denominator for contribution views unless the task explicitly calls for a simple average. Keep event-period exception actuals separate from selected-period aggregates.
+
+Matching-period comparisons require the same covered months or dates in both periods. If coverage is incomplete, emit an unavailable state with the coverage reason instead of annualizing or assuming growth. Reconcile grouped additive totals to detail rows after every material filter.
 
 ## Schema Discovery (for profiling)
 

@@ -4,7 +4,7 @@
     "skillRoot": "skills",
     "registryPath": "registry/skills.json",
     "entryRule": "Each runtime skill exposes SKILL.md.",
-    "dependencyRule": "The host provides all dependencies before the agent starts. Runtime installs and skill downloads are forbidden.",
+    "dependencyRule": "The host provides dependencies before authoring except bi-dashboard's project-local lockfile-bound npm ci. Runtime package changes and skill downloads are forbidden.",
     "dependencyManifest": "registry/dependencies.json",
     "pathResolution": "Repository paths are relative to the repository root; the host supplies its installation and writable project roots."
   },

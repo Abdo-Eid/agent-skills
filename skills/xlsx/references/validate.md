@@ -1,6 +1,6 @@
 # Recalculation And Validation
 
-The generator produces recalculated final bytes. `docQa` validates, renders, visually inspects, and records those exact bytes.
+The generator produces recalculated final bytes. This reference defines portable structural validation and authoring checks; the consuming host decides acceptance, rendering policy, and delivery.
 
 ## Recalculate During Build
 
@@ -40,19 +40,18 @@ Every generated workbook must place structured assertions at `<artifact>.qa.json
 
 Use exact locations. Never accept an expected value merely because it appears somewhere in the workbook.
 
-## docQa
+## Portable Validation
 
-Call `docQa` on the final artifact. It owns:
+Run the validator on the final artifact:
 
-- ZIP, OOXML, relationship, formula, cache, and contract validation.
-- Five-sheet navigation checks.
-- LibreOffice conversion to PDF.
-- Bounded worksheet-page rendering.
-- Visual inspection for clipping, unreadable columns, broken charts, and print fragmentation.
-- One initial check plus the bounded focused repair attempts.
-- SHA-256 evidence consumed by `docDeliver`.
+```bash
+python <skills-root>/xlsx/scripts/validate_workbook.py \
+  <project-root>/out/report.xlsx --json
+```
 
-If `pass` is false, repair the generator rather than the `.xlsx`, rebuild once, and call `docQa` again while the repair budget remains. Stop when `repairLimitReached` is true.
+It checks ZIP and OOXML structure, formula/cache state, contract assertions, workbook navigation, charts, and print settings. Render representative sheets with a compatible office renderer to inspect clipping, unreadable columns, broken charts, and print fragmentation.
+
+If validation fails, repair the generator rather than the `.xlsx`, rebuild, recalculate, and rerun the relevant checks. A host decides retry limits and delivery policy.
 
 ## Failure Semantics
 
@@ -65,4 +64,4 @@ If `pass` is false, repair the generator rather than the `.xlsx`, rebuild once, 
 - Rendering fragmentation: fix print area, orientation, scaling, widths, or chart placement.
 - LibreOffice/Excel semantic difference: report the engine limit and do not claim Excel parity.
 
-Deliver only after `docQa.pass` is true and the artifact hash matches the final bytes.
+Require successful generation, a non-empty artifact, successful portable checks, and a reconciled generator/contract before handing the workbook to a host.

@@ -1,6 +1,6 @@
 # Workbook Formatting And Print Quality
 
-Use XlsxWriter formats to encode meaning, hierarchy, and numeric precision. Formatting must remain readable on screen and in the PDF pages rendered by `docQa`.
+Use XlsxWriter formats to encode meaning, hierarchy, and numeric precision. Formatting must remain readable on screen and in pages rendered by a compatible office renderer.
 
 ## Semantic Roles
 

@@ -1,154 +1,92 @@
-import { useEffect } from 'react'
 import Chart from './Chart.jsx'
 import dashboardData from '../data/dashboard-data.json'
 
-const palette = ['#4f72ad', '#344f86', '#2d92c4', '#28b6c9', '#f5b5c8', '#c88b3a']
+const palette = ['#087d72', '#4f72ad', '#d28d18', '#b74040']
+const number = value => value.toLocaleString('en-US')
+const trend = dashboardData.charts.trend
+const groups = dashboardData.charts.groups
+const composition = dashboardData.charts.composition
+const relationship = dashboardData.charts.relationship
 
-const stages = dashboardData.charts.stageDistribution
-const sources = dashboardData.charts.sourceDistribution
-const sourceConv = dashboardData.charts.sourceConversion
-const kpis = dashboardData.kpis
-const insights = dashboardData.insights
-const actions = dashboardData.actions
-
-const stageNames = stages.map(s => s.deal_stage)
-const stageCounts = stages.map(s => s.count)
-
-const sourceNames = sources.map(s => s.source)
-const sourceCounts = sources.map(s => s.count)
-
-const sourceWinSorted = [...sourceConv].sort((a, b) => b.win_rate - a.win_rate)
-const srcWinNames = sourceWinSorted.map(s => s.source)
-const srcWinRates = sourceWinSorted.map(s => s.win_rate)
-
-const stageOption = {
-  color: palette,
-  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-  grid: { left: 16, right: 24, top: 28, bottom: 28 },
-  xAxis: { type: 'category', data: stageNames, axisTick: { show: false }, axisLabel: { rotate: 30 } },
-  yAxis: { type: 'value', axisLabel: { formatter: v => v.toLocaleString() } },
-  series: [{ type: 'bar', data: stageCounts, barMaxWidth: 40, label: { show: true, position: 'top', formatter: p => p.value.toLocaleString() } }],
-}
-
-const sourceOption = {
-  color: [palette[0], palette[3]],
-  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-  legend: { bottom: 0, icon: 'circle' },
-  grid: { left: 16, right: 56, top: 28, bottom: 48 },
-  xAxis: { type: 'category', data: sourceNames, axisTick: { show: false }, axisLabel: { rotate: 30, fontSize: 10 } },
+const trendOption = {
+  color: [palette[0], palette[2]],
+  tooltip: { trigger: 'axis' },
+  grid: { left: 56, right: 52, top: 22, bottom: 52 },
+  xAxis: { type: 'category', data: trend.map(row => row.period), axisTick: { show: false } },
   yAxis: [
-    { type: 'value', name: 'Leads', axisLabel: { formatter: v => v.toLocaleString() } },
-    { type: 'value', name: 'Win Rate %', min: 0, max: 16, axisLabel: { formatter: '{value}%' } },
+    { type: 'value', name: 'Primary measure', axisLabel: { formatter: number } },
+    { type: 'value', name: 'Rate', min: 0, max: 100, axisLabel: { formatter: '{value}%' } },
   ],
   series: [
-    { type: 'bar', name: 'Leads', data: sourceCounts, barMaxWidth: 24 },
-    { type: 'line', name: 'Win Rate', data: sourceConv.map(s => s.win_rate), yAxisIndex: 1, smooth: true, symbol: 'circle', symbolSize: 6, lineStyle: { width: 2 } },
+    { type: 'bar', name: 'Primary measure', data: trend.map(row => row.primary), barMaxWidth: 42, label: { show: true, position: 'top' } },
+    { type: 'line', name: 'Rate', data: trend.map(row => row.rate), yAxisIndex: 1, smooth: true, symbol: 'circle', symbolSize: 8, lineStyle: { width: 3 } },
   ],
 }
 
-const winRateOption = {
+const groupOption = {
+  color: [palette[1]],
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  grid: { left: 56, right: 24, top: 22, bottom: 52 },
+  xAxis: { type: 'category', data: groups.map(row => row.group), axisTick: { show: false } },
+  yAxis: { type: 'value', name: 'Primary measure', axisLabel: { formatter: number } },
+  series: [{ type: 'bar', name: 'Primary measure', data: groups.map(row => row.primary), barMaxWidth: 48, label: { show: true, position: 'top' } }],
+}
+
+const compositionOption = {
   color: palette,
-  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: p => `${p[0].name}<br/>Win Rate: ${p[0].value}%` },
-  grid: { left: 16, right: 24, top: 28, bottom: 28 },
-  xAxis: { type: 'category', data: srcWinNames, axisTick: { show: false }, axisLabel: { rotate: 30, fontSize: 10 } },
-  yAxis: { type: 'value', name: 'Win Rate %', axisLabel: { formatter: '{value}%' } },
-  series: [{ type: 'bar', data: srcWinRates, barMaxWidth: 28, label: { show: true, position: 'top', formatter: p => `${p.value}%`, fontSize: 10 } }],
+  tooltip: { trigger: 'item', formatter: '{b}: {c}% ({d}% of displayed composition)' },
+  legend: { bottom: 0 },
+  series: [{ type: 'pie', name: 'Composition', radius: ['42%', '68%'], center: ['50%', '44%'], label: { show: true, formatter: '{b}: {c}%' }, data: composition.map(row => ({ name: row.category, value: row.value })) }],
+}
+
+const relationshipOption = {
+  color: [palette[1]],
+  tooltip: { trigger: 'item', formatter: ({ data }) => `${data.name}<br/>X measure: ${data.value[0]}<br/>Y measure: ${data.value[1]}` },
+  grid: { left: 62, right: 28, top: 28, bottom: 52 },
+  xAxis: { type: 'value', name: 'X measure' },
+  yAxis: { type: 'value', name: 'Y measure' },
+  series: [{
+    type: 'scatter',
+    name: 'Groups',
+    symbolSize: 14,
+    data: relationship.map(row => ({ name: row.group, value: [row.x, row.y] })),
+    markLine: { silent: true, data: [{ xAxis: 80 }, { yAxis: 100 }] },
+  }],
 }
 
 export default function App() {
-  useEffect(() => {
-    window.__DASHBOARD_READY__ = true
-  }, [])
-
   return (
-    <div className="dashboard-shell">
-      <div className="dashboard-header">
+    <main className="dashboard-shell" id="dashboard-content">
+      <a className="skip-link" href="#dashboard-content">Skip to dashboard content</a>
+      <header className="dashboard-header">
         <div>
-          <p className="dashboard-eyebrow">Sales Pipeline Report</p>
-          <h1>Pipeline Health &amp; Source Performance</h1>
-          <p className="dashboard-subtitle">
-            {dashboardData.metadata.rowCount.toLocaleString()} leads across {dashboardData.charts.stages.length} stages and {dashboardData.charts.sources.length} sources.
-            Generated {new Date(dashboardData.metadata.generatedAt).toLocaleDateString()}.
-          </p>
+          <p className="dashboard-eyebrow">Domain-neutral BI starter</p>
+          <h1>Replace this sample with the task&apos;s decision story</h1>
+          <p className="dashboard-subtitle">This starter proves bar, line, donut, scatter, thresholds, readable defaults, print layout, and structured exceptions. Replace its schema, labels, values, findings, and composition rather than treating it as a template.</p>
         </div>
-      </div>
+        <aside className="headline-card">
+          <strong>{dashboardData.assessment.title}</strong>
+          <p>{dashboardData.assessment.detail}</p>
+        </aside>
+      </header>
 
-      <div className="headline-card">
-        <strong>Pipeline is balanced but stalled volume demands attention</strong>
-        <p>
-          With {kpis[0].value} leads distributed evenly across {dashboardData.charts.stages.length} stages, the pipeline shows healthy top-of-funnel activity.
-          However, {kpis[3].value} deals ({kpis[1].value} win rate) are stalled in On Hold — the single largest segment.
-          Source performance varies significantly, with Cold Email (12.5%) converting at nearly double Social Media (7.5%).
-        </p>
-      </div>
+      <section className="kpi-grid" aria-label="Example key performance indicators">
+        {dashboardData.kpis.map(kpi => <article className="kpi-card" key={kpi.label}><p className="kpi-label">{kpi.label}</p><p className="kpi-value">{kpi.value}</p><p className="kpi-note">{kpi.note}</p></article>)}
+      </section>
 
-      <div className="kpi-grid">
-        {kpis.map((kpi, i) => (
-          <div className="kpi-card" key={i}>
-            <p className="kpi-label">{kpi.label}</p>
-            <p className="kpi-value">{kpi.value}</p>
-            <p className="kpi-note">{kpi.note}</p>
-          </div>
-        ))}
-      </div>
+      <section className="dashboard-grid" aria-label="Example chart capabilities">
+        <article className="chart-card wide"><header className="chart-card-header"><h2 className="chart-card-title">Trend capability</h2><p className="chart-card-subtitle">Bar and line series with independent scales</p></header><div className="chart-card-body"><Chart option={trendOption} height={340} /></div></article>
+        <article className="chart-card compact"><header className="chart-card-header"><h2 className="chart-card-title">Group comparison</h2><p className="chart-card-subtitle">Replace generic groups with the task&apos;s comparison dimension</p></header><div className="chart-card-body"><Chart option={groupOption} height={340} /></div></article>
+        <article className="chart-card compact"><header className="chart-card-header"><h2 className="chart-card-title">Composition capability</h2><p className="chart-card-subtitle">Use only when part-to-whole is the business question</p></header><div className="chart-card-body"><Chart option={compositionOption} height={340} /></div></article>
+        <article className="chart-card full"><header className="chart-card-header"><h2 className="chart-card-title">Relationship and threshold capability</h2><p className="chart-card-subtitle">Scatter geometry with illustrative X/Y thresholds; replace both measures and targets</p></header><div className="chart-card-body"><Chart option={relationshipOption} height={340} /></div></article>
+      </section>
 
-      <div className="dashboard-grid">
-        <div className="chart-card wide">
-          <div className="chart-card-header">
-            <p className="chart-card-title">Pipeline Stage Distribution</p>
-            <p className="chart-card-subtitle">Lead count by stage in pipeline order — On Hold is the largest single stage at 1,047</p>
-          </div>
-          <div className="chart-card-body">
-            <Chart option={stageOption} height={320} />
-          </div>
-        </div>
+      <section className="insight-grid">
+        <article className="insight-panel"><h2 className="panel-title">Example measured findings</h2><ul className="finding-list">{dashboardData.insights.map(item => <li key={item.finding}><strong>Finding:</strong> {item.finding}<br /><strong>Meaning:</strong> {item.meaning}</li>)}</ul></article>
+        <article className="action-panel"><h2 className="panel-title">Example actions</h2><ul className="action-list">{dashboardData.actions.map(item => <li key={item.action}><strong>Action:</strong> {item.action}<br />{item.finding}</li>)}</ul></article>
+      </section>
 
-        <div className="chart-card wide">
-          <div className="chart-card-header">
-            <p className="chart-card-title">Source Volume &amp; Win Rate</p>
-            <p className="chart-card-subtitle">Lead count by source (bars) with conversion rate overlay (line)</p>
-          </div>
-          <div className="chart-card-body">
-            <Chart option={sourceOption} height={320} />
-          </div>
-        </div>
-
-        <div className="chart-card">
-          <div className="chart-card-header">
-            <p className="chart-card-title">Win Rate by Source</p>
-            <p className="chart-card-subtitle">Sorted from highest to lowest conversion</p>
-          </div>
-          <div className="chart-card-body">
-            <Chart option={winRateOption} height={340} />
-          </div>
-        </div>
-      </div>
-
-      <div className="insight-grid">
-        <div className="insight-panel">
-          <p className="panel-title">Key Findings</p>
-          <ul className="finding-list">
-            {insights.map((item, i) => (
-              <li key={i}>
-                <strong>Finding: </strong>{item.finding}<br />
-                <strong>Meaning: </strong>{item.meaning}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="action-panel">
-          <p className="panel-title">Recommended Actions</p>
-          <ul className="action-list">
-            {actions.map((item, i) => (
-              <li key={i}>
-                <strong>Action: </strong>{item.action}
-                <br /><span style={{ color: '#5f594f', fontSize: '0.92rem' }}>{item.finding}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
+      <section className="table-card" aria-labelledby="exception-title"><h2 className="panel-title" id="exception-title">Structured exception example</h2><div className="table-wrap"><table><thead><tr><th>Entity</th><th>Periods</th><th>Metric</th><th>Actual</th><th>Target</th><th>Variance</th><th>Driver</th><th>Owner</th><th>Action</th></tr></thead><tbody>{dashboardData.exceptions.map(item => <tr key={`${item.entity}-${item.metric}`}><td>{item.entity}</td><td>{item.periods.join(', ')}</td><td>{item.metric}</td><td>{number(item.actual)} {item.unit}</td><td>{item.operator} {number(item.target)} {item.unit}</td><td>{number(item.variance)} {item.unit}</td><td>{item.driver}</td><td>{item.owner}</td><td>{item.action}</td></tr>)}</tbody></table></div></section>
+    </main>
   )
 }
