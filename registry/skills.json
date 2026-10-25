@@ -4,7 +4,7 @@
     "skillRoot": "skills",
     "registryPath": "registry/skills.json",
     "entryRule": "Each runtime skill exposes SKILL.md.",
-    "dependencyRule": "The host provides dependencies before authoring except bi-dashboard's project-local lockfile-bound npm ci. Runtime package changes and skill downloads are forbidden.",
+    "dependencyRule": "The host provides dependencies before authoring. Runtime package changes and skill downloads are forbidden.",
     "dependencyManifest": "registry/dependencies.json",
     "pathResolution": "Repository paths are relative to the repository root; the host supplies its installation and writable project roots."
   },
@@ -12,7 +12,6 @@
     { "id": "pdf", "path": "skills/pdf", "entry": "skills/pdf/SKILL.md", "dependencyProfile": "pdf", "outputFormats": ["pdf"] },
     { "id": "pptx", "path": "skills/pptx", "entry": "skills/pptx/SKILL.md", "dependencyProfile": "pptx", "outputFormats": ["pptx"] },
     { "id": "xlsx", "path": "skills/xlsx", "entry": "skills/xlsx/SKILL.md", "dependencyProfile": "xlsx", "outputFormats": ["xlsx"] },
-    { "id": "docx", "path": "skills/docx", "entry": "skills/docx/SKILL.md", "dependencyProfile": "docx", "outputFormats": ["docx"] },
-    { "id": "bi-dashboard", "path": "skills/bi-dashboard", "entry": "skills/bi-dashboard/SKILL.md", "dependencyProfile": "bi-dashboard", "outputFormats": ["html"] }
+    { "id": "docx", "path": "skills/docx", "entry": "skills/docx/SKILL.md", "dependencyProfile": "docx", "outputFormats": ["docx"] }
   ]
 }

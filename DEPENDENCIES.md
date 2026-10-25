@@ -1,6 +1,6 @@
 # Agent Skills Dependencies
 
-This document lists the runtimes, packages, binaries, browsers, and fonts needed by each skill. Skills do not download replacement skills or mutate dependency manifests at runtime. The BI dashboard is the one exception to preinstalled JavaScript dependencies: its initializer runs a project-local `npm ci` from its committed lockfile. The machine-readable equivalent is [`registry/dependencies.json`](registry/dependencies.json).
+This document lists the runtimes, packages, binaries, browsers, and fonts needed by each skill. Skills do not download replacement skills or mutate dependency manifests at runtime. The machine-readable equivalent is [`registry/dependencies.json`](registry/dependencies.json).
 
 ## Dependency Classes
 
@@ -30,14 +30,14 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 
 | Package/binary | Skills | Purpose |
 |---|---|---|
-| `python3`, `python3-pip` | PDF, XLSX, DOCX QA, BI Dashboard | Python generators, analysis, and validators |
-| Node.js 22 | PDF, PPTX, DOCX, BI Dashboard | JavaScript generators and dashboard build |
+| `python3`, `python3-pip` | PDF, XLSX, DOCX QA | Python generators, analysis, and validators |
+| Node.js 22 | PDF, PPTX, DOCX | JavaScript generators |
 | `zip`, `unzip` | All Office formats | Package inspection and source bundling |
 | LibreOffice Core | PPTX, XLSX, DOCX | Headless compatibility, recalculation, and PDF rendering |
 | `poppler-utils` | All rendered formats | `pdfinfo`, `pdftotext`, and `pdftoppm` |
 | `qpdf` | PDF | Structural PDF validation |
 | ImageMagick | PDF, PPTX, XLSX, DOCX | Rendered-image dimensions and contact sheets |
-| Chromium headless shell | PDF HTML route, BI Dashboard QA | Browser rendering |
+| Chromium headless shell | PDF HTML route | Browser rendering |
 | DejaVu, Liberation, Noto, Noto CJK, Noto Color Emoji fonts | All visual formats | Predictable multilingual rendering and fallbacks |
 
 ## PDF
@@ -113,32 +113,6 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 - ImageMagick
 - Shared fonts
 
-## BI Dashboard
-
-The dashboard source starter has its own [`package.json`](skills/bi-dashboard/scaffold/package.json) and committed lockfile. Initialize a writable project with `skills/bi-dashboard/scripts/init-project.mjs`; it runs the only supported project-local dependency installation, `npm ci --no-audit --no-fund`.
-
-### Authoring And Data Preparation
-
-| Ecosystem | Package | Declared version/range | Purpose | License |
-|---|---|---:|---|---|
-| Node | `react` | 19.2.8 | Dashboard UI | MIT |
-| Node | `react-dom` | 19.2.8 | React DOM renderer | MIT |
-| Node | `echarts` | 6.1.0 | Charts and visualization | Apache-2.0 |
-| Node | `echarts-for-react` | 3.0.6 | React ECharts adapter | MIT |
-| Node | `vite` | 8.2.1 | Dashboard build | MIT |
-| Node | `@vitejs/plugin-react` | 6.0.5 | React build integration | MIT |
-| Node | `vite-plugin-singlefile` | 2.3.3 | Portable single-file HTML output | MIT |
-| Node | `playwright` | 1.62.1 | Browser preflight | Apache-2.0 |
-| Python | `duckdb` | 1.5.5 | Local analytical queries and aggregation | MIT |
-| Python | `openpyxl` | 3.1.5 | XLSX input | MIT |
-| Python | `pandas` | 3.0.5 | CSV and XLSX input preparation | BSD-3-Clause |
-
-### QA
-
-- Playwright 1.62.1
-- Chromium headless shell
-- Shared fonts
-
 ## Reference Installation
 
 The commands below are a convenience baseline for Debian 12. Production deployments should pin an image digest and package versions and preserve applicable license notices.
@@ -153,14 +127,13 @@ apt-get update && apt-get install -y --no-install-recommends \
 ```bash
 pip3 install \
   XlsxWriter==3.2.9 openpyxl==3.1.5 pandas==3.0.5 defusedxml==0.7.1 \
-  reportlab==5.0.0 pypdf==6.15.0 Pillow==12.3.0 duckdb==1.5.5 matplotlib==3.11.1
+  reportlab==5.0.0 pypdf==6.15.0 Pillow==12.3.0 matplotlib==3.11.1
 ```
 
 ```bash
 npm install -g \
   playwright@1.62.1 pptxgenjs@4.0.1 docx@9.7.1 pdf-lib@1.17.1
 npx playwright install --only-shell chromium
-node skills/bi-dashboard/scripts/init-project.mjs --target /path/to/dashboard-project
 ```
 
 ## Runtime Verification
@@ -168,7 +141,7 @@ node skills/bi-dashboard/scripts/init-project.mjs --target /path/to/dashboard-pr
 Verify dependencies before publishing an image:
 
 ```bash
-python3 -c "import xlsxwriter, openpyxl, pandas, defusedxml, reportlab, pypdf, PIL, duckdb, matplotlib"
+python3 -c "import xlsxwriter, openpyxl, pandas, defusedxml, reportlab, pypdf, PIL, matplotlib"
 node -e "require('playwright'); require('pptxgenjs'); require('docx'); require('pdf-lib')"
 command -v soffice qpdf pdfinfo pdftoppm convert zip unzip
 ```

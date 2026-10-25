@@ -1,6 +1,0 @@
-node_modules/
-.vite-cache/
-outputs/
-preflight/
-__pycache__/
-*.py[cod]

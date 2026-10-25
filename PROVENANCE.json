@@ -6,11 +6,9 @@
   "authorization": "Permission to use the proprietary work; no ownership assignment, transfer, sublicensing, or public relicensing authority",
   "distributionRepository": "https://github.com/Abdo-Eid/agent-skills",
   "runtimeContract": {
-    "skillNames": ["pdf", "pptx", "xlsx", "docx", "bi-dashboard"],
+    "skillNames": ["pdf", "pptx", "xlsx", "docx"],
     "noRuntimeInstalls": true,
-    "allowedProjectLocalInstalls": [
-      "skills/bi-dashboard/scripts/init-project.mjs runs npm ci --no-audit --no-fund against the copied starter's committed lockfile"
-    ],
+    "allowedProjectLocalInstalls": [],
     "dependencyManifest": "registry/dependencies.json"
   },
   "files": [
@@ -49,12 +47,6 @@
       "origin": "First-party helpers",
       "evidence": "The current read, recalculation, and validation helpers were written for the XlsxWriter rewrite and published with SPDX MIT identifiers",
       "license": "MIT"
-    },
-    {
-      "path": "skills/bi-dashboard",
-      "origin": "First-party hardened implementation",
-      "evidence": "Historical dashboard behavior at agent-skills commit 8df18b1abbdad1e2f90cf19c22549e7ce79db315, then independently hardened with a source-only starter, portable initializer, static validator, browser preflight, and current stable dependency pins",
-      "license": "LicenseRef-Proprietary"
     }
   ],
   "excludedSources": [

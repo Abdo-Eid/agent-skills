@@ -21,7 +21,7 @@
       "fonts-noto-cjk",
       "fonts-noto-color-emoji"
     ],
-    "contract": "Dependencies are installed before agent startup except the bi-dashboard starter's project-local lockfile-bound npm ci. Replacement skill downloads remain forbidden."
+    "contract": "Dependencies are installed before agent startup. Replacement skill downloads remain forbidden."
   },
   "profiles": {
     "pdf": {
@@ -64,24 +64,6 @@
         { "name": "defusedxml", "version": "0.7.1", "purpose": "QA validation" }
       ],
       "system": ["libreoffice-core", "libreoffice-writer", "poppler-utils", "imagemagick"]
-    },
-    "bi-dashboard": {
-      "node": [
-        { "name": "react", "version": "19.2.8", "purpose": "authoring" },
-        { "name": "react-dom", "version": "19.2.8", "purpose": "authoring" },
-        { "name": "echarts", "version": "6.1.0", "purpose": "charts" },
-        { "name": "echarts-for-react", "version": "3.0.6", "purpose": "charts" },
-        { "name": "vite", "version": "8.2.1", "purpose": "build" },
-        { "name": "@vitejs/plugin-react", "version": "6.0.5", "purpose": "build" },
-        { "name": "vite-plugin-singlefile", "version": "2.3.3", "purpose": "single-file output" },
-        { "name": "playwright", "version": "1.62.1", "purpose": "browser preflight" }
-      ],
-      "python": [
-        { "name": "duckdb", "version": "1.5.5", "purpose": "analysis" },
-        { "name": "openpyxl", "version": "3.1.5", "purpose": "XLSX input" },
-        { "name": "pandas", "version": "3.0.5", "purpose": "CSV and XLSX input preparation" }
-      ],
-      "browser": ["chromium-headless-shell"]
     }
   }
 }

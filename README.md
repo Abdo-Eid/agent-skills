@@ -1,6 +1,6 @@
 # Agent Skills
 
-Agent Skills is a collection of specialized skills for creating professional documents, spreadsheets, presentations, and business intelligence dashboards.
+Agent Skills is a collection of specialized skills for creating professional documents, spreadsheets, and presentations.
 
 ## Included Skills
 
@@ -10,7 +10,6 @@ Agent Skills is a collection of specialized skills for creating professional doc
 | [PPTX](skills/pptx) | Creates editable PowerPoint presentations with structured narratives and professional layouts. |
 | [XLSX](skills/xlsx) | Creates polished formula-driven workbooks, analyzes spreadsheet data, and continues generated workbooks through durable source. |
 | [DOCX](skills/docx) | Creates professional, editable Word documents with reusable styles and structured content. |
-| [BI Dashboard](skills/bi-dashboard) | Creates self-contained HTML dashboards for analytics, KPIs, finance, sales, and operations reporting. |
 
 ## Repository Structure
 
@@ -29,7 +28,7 @@ Hosts may expose the shared skills root as `AGENT_SKILLS_ROOT`. A skill must not
 
 ## Dependencies
 
-Dependencies are provided by the consuming host. The BI dashboard is the one project-local exception: its portable initializer copies the source starter to a writable project and runs `npm ci` from the committed lockfile. See [`DEPENDENCIES.md`](DEPENDENCIES.md) for per-skill setup and [`registry/dependencies.json`](registry/dependencies.json) for the machine-readable manifest.
+Dependencies are provided by the consuming host. See [`DEPENDENCIES.md`](DEPENDENCIES.md) for per-skill setup and [`registry/dependencies.json`](registry/dependencies.json) for the machine-readable manifest.
 
 ## License
 
