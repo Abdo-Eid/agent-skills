@@ -176,6 +176,8 @@ def transplant_formula_caches(source: Path, calculated: Path, output: Path) -> i
 
 
 def libreoffice_version(soffice: str) -> str:
+    if sys.platform == "win32":  # soffice --version opens a console window that waits for Enter
+        return "unknown"
     try:
         result = subprocess.run(
             [soffice, "--version"],
@@ -185,7 +187,8 @@ def libreoffice_version(soffice: str) -> str:
         )
     except (OSError, subprocess.TimeoutExpired):
         return "unknown"
-    return (result.stdout or result.stderr).strip().splitlines()[0][:200] or "unknown"
+    lines = (result.stdout or result.stderr).strip().splitlines()
+    return lines[0][:200] if lines else "unknown"
 
 
 def recalculate(input_path: Path, output_path: Path, timeout: int) -> dict[str, Any]:
@@ -198,7 +201,8 @@ def recalculate(input_path: Path, output_path: Path, timeout: int) -> dict[str, 
     check_zip(input_path)
     input_report = workbook_report(input_path)
 
-    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    # On Windows PATHEXT lists .COM first, and soffice.COM is the console launcher.
+    soffice = shutil.which("soffice.exe") or shutil.which("soffice") or shutil.which("libreoffice")
     if not soffice:
         raise RuntimeUnavailableError("LibreOffice is missing from the baked runtime")
 

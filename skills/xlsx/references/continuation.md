@@ -11,7 +11,7 @@ Continuation edits the durable generator source and rebuilds the workbook. It do
 5. Re-run the same generator entry.
 6. Require a recalculated non-empty final workbook.
 7. Rerun the relevant portable validation and rendered-sheet checks.
-8. Hand the rebuilt artifact to the consuming host for any acceptance and delivery sequence.
+8. Look at the rebuilt workbook (`<skills-root>/artifact-taste/preview.py`) and deliver it the way your task asks.
 
 ## Common Changes
 

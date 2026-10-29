@@ -1,37 +1,48 @@
 ---
 name: docx
-description: Create professional, editable Word documents with the baked docx package and continue generated documents by patching their source generator.
+description: Create editable Word documents with the docx package through a small kit that handles the mechanics (real styles, header-row tables, page X of Y footer, RTL) while you own the structure, and check them in one call.
 license: Proprietary; see the repository-root LICENSE.
 ---
 
 # DOCX
 
-Author a Node generator with the `docx` package under `<project-root>/src` and write the resulting `.docx` to `<project-root>/out`. The generator source is the continuation contract; do not perform deep XML edits on arbitrary uploaded Word binaries.
+Read `<skills-root>/artifact-taste/SKILL.md` first: decide what this document should be before you open the kit.
 
-## Creation workflow
+Write a CommonJS generator `<project-root>/src/build.cjs` with the kit; run it with `node` and `NODE_PATH` set. The file goes to `<project-root>/out/<name>.docx`. Do not hand-edit OOXML; anything the kit lacks goes through `add(...)` with objects from the `docx` package.
 
-1. Choose page size, margins, heading hierarchy, and a restrained palette before adding content. Use explicit document styles instead of ad-hoc formatting.
-2. Create a title page or opening title block only when it serves the document type. Use Heading 1 through Heading 3 semantically so navigation remains usable.
-3. Use tables for aligned data, callout tables or shaded paragraphs for emphasis, and captions for figures. Set table widths, cell margins, and header treatment deliberately. Build header text as runs in an array, for example `paragraph([run("Decision")])`; never pass a `TextRun` through a helper that expects plain text.
-4. Keep paragraphs readable with consistent spacing and avoid empty paragraphs for layout. Use page breaks only at real section boundaries.
-5. Add page numbers, a header/footer, and a contents or overview section for documents of eight or more pages. Use `new TextRun({ children: [PageNumber.CURRENT] })` for the current-page field and tab stops or a footer table for alignment, never literal spaces.
-6. Build to `<project-root>/out/<descriptive-name>.docx`, require a non-empty package, validate its OOXML structure, convert it with a compatible office renderer, and inspect the rendered pages before reporting it ready for host validation.
+```js
+// Direction: <subject material, chosen structure, why>
+const K = require('<skills-root>/docx/kit.cjs');
+const D = require('docx');            // for your own paragraphs, tables, images
+(async () => {                        // CommonJS has no top-level await
+  const d = K.doc({ theme: '<chosen>' /* or tokens: {...} */, page: 'A4', title: '...', footer: '...' });
+  // your structure: kit calls and d.add(new D.Paragraph(...), ...) in the order your direction needs
+  await d.save('<project-root>/out/x.docx');
+})();
+```
 
-## Quality rules
+## Kit API (all methods chain)
 
-- Use a maximum of two type families and clear, accessible contrast.
-- Keep headings with following content and avoid stranded table headers, captions, or one-line paragraphs.
-- Prefer real Word paragraphs, runs, lists, tables, images, and styles over embedded screenshots of text.
-- Keep images local under `assets/`, set their dimensions explicitly, and preserve their aspect ratio.
-- Preserve provided citations and source wording; do not fabricate citations.
-- Give the document explicit page dimensions and margins. Use the verified `docx@9.7.1` structure `page: { size: { width, height }, margin: { ... } }`; standard creation uses high-level `docx` objects and `Packer.toBuffer()`.
-- Before host delivery, reconcile extracted output text with the exact title, contents entries, table headers, representative table values, and rendered page numbers required by the task. For typed contents pages, extract each referenced rendered page and confirm its expected heading appears there.
-- OOXML validation, office conversion, text extraction, and rendered-page review are portable authoring checks. A host decides which validation, visual review, acceptance, and delivery mechanisms apply.
+- `K.doc(opts)`: **colours are required**: `theme` `navy | forest | clay | slate` or `tokens` (`accent`, `ink`, `muted`, `tint`, `line`, `head` and `body` fonts, `th: 'solid' | 'tint' | 'rule'` table header, `rule: true|false` line under the title and h1). `page` `A4 | Letter`; `numberH1: true` numbers h1 ("1. "; `h1(text, false)` skips one; never type numbers yourself); `rtl: true` (bidi, mirrored tables, Arabic footer); `spread`, `density`, `margin`, `size`, `author`.
+- Text: `title subtitle kicker h1 h2 h3 p small gap pageBreak tabline(left, right)`; inline `**bold**` `*italic*`. Headings stay with the next block, a short `p`/`small` before a table stays with it, tables stay whole with their caption.
+- Blocks: `table({head, rows, widths (relative), align:'lrr', total, caption, zebra})`; `callout(text, title)`; `bullets([..])`; `numbered([..])`.
+- Your own content: `add(...docxObjects)` takes any `docx` objects (paragraphs with your own runs and spacing, tables, `ImageRun` images with explicit size, columns, text frames). Helpers: `d.W` text width in twips, `d.t` the colour and font tokens, `d.para(text, paragraphOpts, runOpts)`, `d.runs(text)`. From eight pages add `add(new D.TableOfContents('Contents', { hyperlink: true, headingStyleRange: '1-2' }))`.
+- Footer "Page X of Y" is automatic. Fonts: Arial and Times New Roman only (other fonts are substituted wherever they are not installed).
 
-## Continuation
+## Page count
 
-Read the existing generator first, make a targeted source patch, rebuild, and rerun the relevant portable checks. Comments, tracked changes, redlining, and deep arbitrary OOXML editing are deferred in this first pass.
+Write the content once and let it flow; `pageBreak()` only for real section breaks. If the page count must be exact, run the check with `--fit`: it rebuilds with a spacing-only `spread` until the file has exactly N pages, then prints `spread: x` (add it to `K.doc`). If it says content is short, the document is shorter than asked: add real content or accept fewer pages, never blank lines.
 
-## Runtime boundary
+## Check and look (every time)
 
-The required packages and binaries are listed in the repository-root `DEPENDENCIES.md` and `registry/dependencies.json`. They must be available before authoring starts; runtime installs and replacement-skill downloads are outside this skill contract.
+```
+<python> <skills-root>/docx/check.py <project-root>/out/x.docx --pages 3 --expect "Q3 revenue" "Page 3 of 3" [--fit "node src/build.cjs"] [--text]
+<python> <skills-root>/artifact-taste/preview.py <project-root>/out/x.docx
+```
+`check.py` validates the package, converts with LibreOffice, prints page count and fill, and confirms each `--expect` string ("Page N of M" is checked against the real page count). It exits 1 only for: invalid package, no heading styles, wrong page count, missing string. Then open the preview pages, fix what is wrong, rebuild.
+
+## Rules
+
+- Use only supplied facts and dates; label derived figures; label fictional scenarios. Do not invent citations.
+- No clipped text; images local with explicit size.
+- Comments, tracked changes and deep edits of uploaded Word files are out of scope; patch the generator.

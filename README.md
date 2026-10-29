@@ -6,6 +6,7 @@ Agent Skills is a collection of specialized skills for creating professional doc
 
 | Skill | Description |
 |---|---|
+| [Artifact taste](skills/artifact-taste) | Read before any document skill: how to arrive at a design from the subject instead of the default template, plus a page preview tool. |
 | [PDF](skills/pdf) | Creates polished, print-ready reports, proposals, guides, and papers. |
 | [PPTX](skills/pptx) | Creates editable PowerPoint presentations with structured narratives and professional layouts. |
 | [XLSX](skills/xlsx) | Creates polished formula-driven workbooks, analyzes spreadsheet data, and continues generated workbooks through durable source. |

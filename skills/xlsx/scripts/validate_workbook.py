@@ -16,7 +16,20 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import unquote
 
-from defusedxml import ElementTree
+from xml.etree import ElementTree
+from xml.parsers import expat
+
+# OOXML parts never carry a DTD, so any DOCTYPE is rejected before parsing; expat 2.4.1 and later
+# also limits entity expansion. This replaces the defusedxml dependency.
+if expat.version_info < (2, 4, 1):
+    raise SystemExit(f"expat {expat.version_info} is too old: 2.4.1 or newer is required")
+_DOCTYPE = tuple("<!DOCTYPE".encode(codec) for codec in ("utf-8", "utf-16-le", "utf-16-be"))
+
+
+def parse_xml(data: bytes) -> ElementTree.Element:
+    if any(marker in data for marker in _DOCTYPE):
+        raise ElementTree.ParseError("DOCTYPE is not allowed in an OOXML part")
+    return ElementTree.fromstring(data)
 
 
 ERROR_VALUES = {"#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A"}
@@ -66,7 +79,7 @@ def check_relationships(
     checked = 0
     for rels_path in sorted(name for name in names if name.endswith(".rels")):
         try:
-            root = ElementTree.fromstring(archive.read(rels_path))
+            root = parse_xml(archive.read(rels_path))
         except Exception:
             continue
         base = relationship_base(rels_path)
@@ -113,7 +126,7 @@ def check_content_types(
     if "[Content_Types].xml" not in names:
         return 0
     try:
-        root = ElementTree.fromstring(archive.read("[Content_Types].xml"))
+        root = parse_xml(archive.read("[Content_Types].xml"))
     except Exception:
         return 0
     overrides = 0
@@ -140,7 +153,7 @@ def check_xml_indexes(
     style_count = 0
     if "xl/styles.xml" in names:
         try:
-            root = ElementTree.fromstring(archive.read("xl/styles.xml"))
+            root = parse_xml(archive.read("xl/styles.xml"))
             for element in root.iter():
                 if local_name(element.tag) == "cellXfs":
                     style_count = sum(
@@ -153,7 +166,7 @@ def check_xml_indexes(
     shared_count = 0
     if "xl/sharedStrings.xml" in names:
         try:
-            root = ElementTree.fromstring(archive.read("xl/sharedStrings.xml"))
+            root = parse_xml(archive.read("xl/sharedStrings.xml"))
             shared_count = sum(1 for element in root if local_name(element.tag) == "si")
         except Exception:
             pass
@@ -164,7 +177,7 @@ def check_xml_indexes(
         if name.startswith("xl/worksheets/") and name.endswith(".xml")
     ):
         try:
-            root = ElementTree.fromstring(archive.read(worksheet_path))
+            root = parse_xml(archive.read(worksheet_path))
         except Exception:
             continue
         for cell in root.iter():
@@ -234,7 +247,7 @@ def check_package(path: Path, issues: list[dict[str, Any]]) -> dict[str, int]:
                 continue
             xml_parts += 1
             try:
-                ElementTree.fromstring(archive.read(name))
+                parse_xml(archive.read(name))
             except Exception as error:
                 issue(issues, "XLSX_XML_INVALID", str(error), name)
         relationship_count = check_relationships(archive, names, issues)
@@ -775,7 +788,7 @@ def check_chart_references(
         )
         for chart_path in chart_paths:
             try:
-                root = ElementTree.fromstring(archive.read(chart_path))
+                root = parse_xml(archive.read(chart_path))
             except Exception:
                 continue
             references = [
@@ -811,6 +824,62 @@ def check_chart_references(
                         "XLSX_CHART_SHEET_MISSING",
                         f"chart references unknown worksheet {sheet_name!r}",
                         chart_path,
+                    )
+
+
+def check_chart_caches(path: Path, cached: Any, issues: list[dict[str, Any]]) -> None:
+    """Each series' cached points (numbers and text categories) must equal the cells they reference."""
+    from openpyxl.utils.cell import range_boundaries
+    from openpyxl.utils.datetime import to_excel
+
+    with zipfile.ZipFile(path) as archive:
+        chart_paths = sorted(n for n in archive.namelist() if n.startswith("xl/charts/chart") and n.endswith(".xml"))
+        for chart_path in chart_paths:
+            try:
+                root = parse_xml(archive.read(chart_path))
+            except Exception:
+                continue
+            for ref in (e for e in root.iter() if local_name(e.tag) in ("numRef", "strRef")):
+                formula = next((str(e.text or "") for e in ref if local_name(e.tag) == "f"), "")
+                cache = next((e for e in ref if local_name(e.tag) in ("numCache", "strCache")), None)
+                location = f"{chart_path}:{formula}"
+                try:
+                    sheet_name, area = formula.rsplit("!", 1)
+                    if sheet_name.startswith("'"):
+                        sheet_name = sheet_name[1:-1].replace("''", "'")
+                    c0, r0, c1, r1 = range_boundaries(area.replace("$", ""))
+                    cells = [c.value for row in cached[sheet_name].iter_rows(r0, r1, c0, c1) for c in row]
+                except Exception:
+                    continue  # multi-area, defined-name or external reference
+                expected = {i: (to_excel(v) if hasattr(v, "isoformat") else v) for i, v in enumerate(cells)
+                            if v is not None and v != ""}
+                points = {}
+                if cache is not None:
+                    for pt in cache:
+                        if local_name(pt.tag) == "pt":
+                            points[int(pt.attrib["idx"])] = next((e.text or "" for e in pt if local_name(e.tag) == "v"), "")
+                if not points:
+                    if expected:
+                        issue(issues, "XLSX_CHART_CACHE_MISSING", "chart series has no cached points", location, "warning")
+                    continue
+                bad = []
+                for i in sorted(set(points) | set(expected)):
+                    want, got = expected.get(i), points.get(i)
+                    if want is None or got is None:
+                        bad.append((i, want, got))
+                        continue
+                    try:
+                        same = math.isclose(float(want), float(got), rel_tol=1e-6, abs_tol=1e-9)
+                    except (TypeError, ValueError):
+                        same = str(want) == got
+                    if not same:
+                        bad.append((i, want, got))
+                if bad:
+                    issue(
+                        issues,
+                        "XLSX_CHART_CACHE_STALE",
+                        f"chart cache differs from cells at {len(bad)} point(s) (index, cell, cache): {bad[:3]!r}",
+                        location,
                     )
 
 
@@ -943,6 +1012,7 @@ def validate(path: Path, contract_path: Path | None) -> dict[str, Any]:
         check_contract(workbook, cached, contract, issues)
     check_workbook_structures(workbook, issues)
     check_chart_references(path, sheet_names, issues)
+    check_chart_caches(path, cached, issues)
     check_navigation(workbook, issues)
 
     checks.append(

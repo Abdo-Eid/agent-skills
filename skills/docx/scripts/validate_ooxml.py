@@ -10,7 +10,20 @@ import sys
 import zipfile
 from pathlib import PurePosixPath
 
-from defusedxml import ElementTree
+from xml.etree import ElementTree
+from xml.parsers import expat
+
+# OOXML parts never carry a DTD, so any DOCTYPE is rejected before parsing; expat 2.4.1 and later
+# also limits entity expansion. This replaces the defusedxml dependency.
+if expat.version_info < (2, 4, 1):
+    raise SystemExit(f"expat {expat.version_info} is too old: 2.4.1 or newer is required")
+_DOCTYPE = tuple("<!DOCTYPE".encode(codec) for codec in ("utf-8", "utf-16-le", "utf-16-be"))
+
+
+def parse_xml(data: bytes) -> ElementTree.Element:
+    if any(marker in data for marker in _DOCTYPE):
+        raise ElementTree.ParseError("DOCTYPE is not allowed in an OOXML part")
+    return ElementTree.fromstring(data)
 
 
 REQUIRED_PARTS = {
@@ -55,7 +68,7 @@ def main() -> int:
                 if path.is_absolute() or ".." in path.parts:
                     return fail(f"unsafe package path: {part}")
                 if part.endswith((".xml", ".rels")):
-                    ElementTree.fromstring(package.read(part))
+                    parse_xml(package.read(part))
     except (OSError, zipfile.BadZipFile, ElementTree.ParseError) as error:
         return fail(str(error))
 

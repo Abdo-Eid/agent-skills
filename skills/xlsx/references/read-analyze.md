@@ -10,7 +10,7 @@ python <skills-root>/xlsx/scripts/read_workbook.py <project-root>/assets/input.x
 python <skills-root>/xlsx/scripts/read_workbook.py <project-root>/assets/input.csv --json
 ```
 
-The placeholders are the host-provided roots defined in `SKILL.md`; do not execute them literally.
+The placeholders stand for the skills and project roots you were given (see `SKILL.md`); replace them with the real paths.
 
 For XLSX/XLSM, the report includes sheet dimensions, formula counts, missing cached values, tables, charts, merged ranges, frozen panes, and sample rows. For CSV/TSV, it reports encoding, dimensions, columns, null counts, and sample rows.
 

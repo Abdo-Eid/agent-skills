@@ -6,16 +6,22 @@
   "authorization": "Permission to use the proprietary work; no ownership assignment, transfer, sublicensing, or public relicensing authority",
   "distributionRepository": "https://github.com/Abdo-Eid/agent-skills",
   "runtimeContract": {
-    "skillNames": ["pdf", "pptx", "xlsx", "docx"],
+    "skillNames": ["artifact-taste", "pdf", "pptx", "xlsx", "docx"],
     "noRuntimeInstalls": true,
     "allowedProjectLocalInstalls": [],
     "dependencyManifest": "registry/dependencies.json"
   },
   "files": [
     {
+      "path": "skills/artifact-taste",
+      "origin": "First-party synthesis",
+      "evidence": "Design-process guidance written for this pack and a page preview script built on LibreOffice and poppler command-line tools; no third-party text or code copied",
+      "license": "LicenseRef-Proprietary"
+    },
+    {
       "path": "skills/pdf",
       "origin": "First-party synthesis",
-      "evidence": "Historical PDF behavior at agent-skills commit c9e162420a55ea8c2a6bde07a850a2d6604c02ed and official ReportLab, Playwright, pdf-lib, and pypdf documentation",
+      "evidence": "Historical PDF behavior at agent-skills commit c9e162420a55ea8c2a6bde07a850a2d6604c02ed and official Playwright and pypdf documentation; the HTML kit replaced the earlier ReportLab kit",
       "license": "LicenseRef-Proprietary"
     },
     {
@@ -33,7 +39,7 @@
     {
       "path": "skills/docx/scripts/validate_ooxml.py",
       "origin": "First-party independent validator",
-      "evidence": "Python standard library zipfile plus defusedxml already baked into the image",
+      "evidence": "Python standard library zipfile and xml.etree, with a DOCTYPE rejection guard and an expat 2.4.1 version check; no third-party XML package",
       "license": "LicenseRef-Proprietary"
     },
     {
@@ -41,6 +47,18 @@
       "origin": "First-party rewrite",
       "evidence": "New XlsxWriter workflow informed by historical workbook behavior and official XlsxWriter, openpyxl, pandas, and LibreOffice documentation",
       "license": "LicenseRef-Proprietary"
+    },
+    {
+      "path": "skills/fonts",
+      "origin": "Third-party fonts redistributed from the Google Fonts repository (google/fonts, ofl/)",
+      "evidence": "Rubik, Cairo, IBM Plex Sans Arabic, Tajawal, Noto Naskh Arabic, Amiri and Instrument Serif (Latin display, Regular only); each folder carries its OFL.txt. Rubik, Cairo and Noto Naskh Arabic Regular/Medium/Bold are fontTools static instances of the upstream variable fonts; the others are unmodified. See THIRD_PARTY_NOTICES.md",
+      "license": "OFL-1.1"
+    },
+    {
+      "path": "skills/icons",
+      "origin": "Third-party icons redistributed from the Lucide repository (lucide-icons/lucide, icons/)",
+      "evidence": "79 icons bundled into icons.json with the outer svg element removed; LICENSE.txt carries the ISC licence and the MIT licence for the Feather-derived icons. See THIRD_PARTY_NOTICES.md",
+      "license": "ISC AND MIT"
     },
     {
       "path": "skills/xlsx/scripts/*.py",

@@ -28,7 +28,7 @@ def resolve_xlsx_skill_dir(argument: Path | None) -> Path:
         Path(value) if (value := os.environ.get("AGENT_SKILLS_ROOT")) else None
     )
     if configured is None:
-        raise RuntimeError("the host must pass --skills-root or set AGENT_SKILLS_ROOT")
+        raise RuntimeError("pass --skills-root or set AGENT_SKILLS_ROOT")
     skill_dir = configured.resolve() / "xlsx"
     helper = skill_dir / "scripts" / "recalculate_workbook.py"
     if not helper.is_file():
@@ -102,7 +102,7 @@ def write_formula(sheet: Worksheet, address: str, formula: str, cell_format: For
 
 def configure_data_sheet(sheet: Worksheet, last_row: int, last_column: int) -> None:
     sheet.freeze_panes(1, 1)
-    sheet.hide_gridlines(0)
+    sheet.hide_gridlines(1)
     sheet.set_landscape()
     sheet.set_paper(9)
     sheet.fit_to_pages(1, 0)
@@ -208,7 +208,7 @@ def build_raw_workbook(
         style["note"],
     )
     overview.set_row(9, 58)
-    overview.hide_gridlines(0)
+    overview.hide_gridlines(1)
     overview.set_portrait()
     overview.fit_to_pages(1, 1)
     overview.print_area(0, 0, 9, 1)
@@ -292,7 +292,7 @@ def build_raw_workbook(
         formula_count += 3
     add_table(profile, "DataProfileTable", profile_headers, len(headers))
     profile.freeze_panes(1, 0)
-    profile.hide_gridlines(0)
+    profile.hide_gridlines(1)
     profile.set_portrait()
     profile.fit_to_pages(1, 0)
     profile.repeat_rows(0)

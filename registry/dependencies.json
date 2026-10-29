@@ -14,7 +14,6 @@
       "zip",
       "unzip",
       "poppler-utils",
-      "imagemagick",
       "fonts-dejavu",
       "fonts-liberation",
       "fonts-noto-core",
@@ -24,46 +23,46 @@
     "contract": "Dependencies are installed before agent startup. Replacement skill downloads remain forbidden."
   },
   "profiles": {
+    "artifact-taste": {
+      "python": [
+        { "name": "Pillow", "version": "12.3.0", "purpose": "contact sheet in preview.py (page images still render without it)", "optional": true }
+      ],
+      "system": ["poppler-utils", "libreoffice-core", "libreoffice-writer", "libreoffice-calc", "libreoffice-impress"]
+    },
     "pdf": {
       "python": [
-        { "name": "reportlab", "version": "5.0.0", "purpose": "authoring" },
-        { "name": "pypdf", "version": "6.15.0", "purpose": "inspection and manipulation" },
-        { "name": "Pillow", "version": "12.3.0", "purpose": "image handling" },
-        { "name": "matplotlib", "version": "3.11.1", "purpose": "optional charts", "optional": true }
+        { "name": "pypdf", "version": "6.15.0", "purpose": "inspection, manipulation and the check command" },
+        { "name": "Pillow", "version": "12.3.0", "purpose": "image dimensions and normalization", "optional": true },
+        { "name": "matplotlib", "version": "3.11.1", "purpose": "optional chart images until DOCX has an SVG chart recipe; PDF charts are inline SVG", "optional": true }
       ],
       "node": [
-        { "name": "pdf-lib", "version": "1.17.1", "purpose": "optional JavaScript PDF route", "optional": true },
-        { "name": "playwright", "version": "1.62.1", "purpose": "optional HTML/CSS rendering", "optional": true }
+        { "name": "playwright", "version": "1.62.1", "purpose": "HTML/CSS to PDF: the only PDF route, for every language" }
       ],
-      "system": ["qpdf", "poppler-utils", "imagemagick"],
+      "system": ["poppler-utils"],
       "browser": ["chromium-headless-shell"]
     },
     "pptx": {
       "node": [
         { "name": "pptxgenjs", "version": "4.0.1", "purpose": "authoring" }
       ],
-      "python": [
-        { "name": "defusedxml", "version": "0.7.1", "purpose": "QA validation" }
-      ],
-      "system": ["libreoffice-core", "libreoffice-impress", "poppler-utils", "imagemagick"]
+      "system": ["libreoffice-core", "libreoffice-impress"]
     },
     "xlsx": {
       "python": [
         { "name": "XlsxWriter", "version": "3.2.9", "purpose": "authoring" },
         { "name": "openpyxl", "version": "3.1.5", "purpose": "read-only analysis and QA" },
-        { "name": "pandas", "version": "3.0.5", "purpose": "analysis" },
-        { "name": "defusedxml", "version": "0.7.1", "purpose": "QA validation" }
+        { "name": "pandas", "version": "3.0.5", "purpose": "analysis" }
       ],
-      "system": ["libreoffice-core", "libreoffice-calc", "poppler-utils", "imagemagick"]
+      "system": ["libreoffice-core", "libreoffice-calc"]
     },
     "docx": {
       "node": [
         { "name": "docx", "version": "9.7.1", "purpose": "authoring" }
       ],
       "python": [
-        { "name": "defusedxml", "version": "0.7.1", "purpose": "QA validation" }
+        { "name": "pypdf", "version": "6.15.0", "purpose": "page count and page fill in the check" }
       ],
-      "system": ["libreoffice-core", "libreoffice-writer", "poppler-utils", "imagemagick"]
+      "system": ["libreoffice-core", "libreoffice-writer"]
     }
   }
 }

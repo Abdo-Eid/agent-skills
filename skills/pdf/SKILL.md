@@ -1,38 +1,63 @@
 ---
 name: pdf
-description: Create polished, print-ready PDF reports, proposals, guides, and papers from an editable generator source. Use for new PDF creation or targeted changes to a generated PDF.
+description: Create print-ready PDF reports, briefs, proposals, catalogues and guides in any language, including Arabic, Hebrew and other right-to-left documents, with one HTML kit that handles the mechanics while you own the composition, and check them in one call.
 license: Proprietary; see the repository-root LICENSE.
 ---
 
 # PDF
 
-Build durable source under `<project-root>/src` and write the final file under `<project-root>/out`. Use ReportLab for deterministic multi-page documents and Playwright with local HTML/CSS when an editorial or branded composition benefits from browser layout. Use `pdf-lib` or `pypdf` only for narrow assembly tasks, never as a substitute for the durable generator.
+Read `<skills-root>/artifact-taste/SKILL.md` first: decide what this document should be before you open the kit.
 
-## Creation workflow
+Write a short Node generator under `<project-root>/src` and write the file to `<project-root>/out/<name>.pdf`. One route for every script: the HTML kit `html.cjs`. Chromium prints it and joins and orders Arabic and other complex scripts itself. The kit does the mechanics (fonts, direction, page numbers, page breaks, fitting) and offers content blocks; the page composition is yours, and plain HTML and CSS are always available.
 
-1. Read the existing generator before a continuation; patch it instead of rebuilding healthy pages.
-2. Choose one content-led visual direction: restrained research, confident strategy, calm health, expressive culture, or a user-supplied brand. Use a limited palette, one visible accent, and at most two type families.
-3. Set explicit page size, margins, typography, headers, footers, and page numbers. Keep headings with their first paragraph or table row; do not split a chart, figure, or callout from its caption.
-4. Use native charts or locally generated images. Preserve aspect ratio and include useful captions or source notes. For ReportLab charts, reserve separate title, tick-label, plot, and container bands; verify top/right ticks and direct labels stay inside the chart bounds.
-5. Build into `<project-root>/out/<descriptive-name>.pdf`. Require successful generation, a non-empty artifact, required text markers, and a complete local render before reporting the build as ready for host validation.
+```js
+// node src/gen.cjs   (NODE_PATH as usual; locally also CHROME_PATH=<chrome.exe>)
+// Direction: <the subject material you are using, the structure you chose, and why>
+const { Doc } = require('<skills-root>/pdf/html.cjs');
+const d = new Doc({ lang: 'en', theme: '<chosen>' /* or accent: '#…' */, title: '…', footer: '…',
+                    css: `/* your own styles, e.g. a cover or a margin-note layout */` });
+d.build('<project-root>/out/x.pdf', [
+  // your composition: text, grid, box and data blocks below, arranged the way your direction needs
+  …
+]);
+```
 
-## Quality rules
+## Mechanics
 
-- Design for print first: no clipped content, low-contrast text, browser-only fonts, remote assets, or decorative gradients.
-- Treat the cover and body as one system. Use consistent title, body, caption, and metadata scales.
-- Prefer structured sections, tables, callouts, and figures to a wall of prose. Keep tables legible; split dense tables across pages.
-- For eight or more pages, add a contents or overview page and running page-position cues.
-- Preserve citations and dates supplied by research. Do not invent sources or replace a requested date.
-- Route unconstrained narrative, callout, and table prose through width-aware wrapping. Do not use raw `drawString` for text that can exceed its available width.
-- Before host delivery, reconcile the completed PDF against the task: required page count, page numbers, page-specific content, chart labels, disclaimers, and financial calculations must all be present.
-- For financial analysis, expose supplied inputs, annual cash flows, discount factors, NPV, simple payback, and sensitivity inputs in a machine-readable reconciliation beside the generator output. Label derived values as analysis.
-- Plan each page as title, plot, table, callout, and footer regions before drawing. Assert variable-width text and table widths fit their allocated region.
-- `qpdf --check`, `pdfinfo`, text extraction, and full-page rendering are portable authoring checks. A host decides which validation, visual review, acceptance, and delivery mechanisms apply.
+- `new Doc(opts)`: `lang` (`ar he fa ur` are right-to-left), `size` `A4` | `Letter`, `title`, `footer`, `header`, `margin` (mm), `digits: 'arabic-indic'`, `numbers: true` (numbers `h1` as 01, 02), `css`.
+- **Colours are required**: `theme` (`persimmon indigo forest navy clay slate plum teal`) or your own `accent`, optionally with `ink muted tint rule paper`. Pick from the subject; no theme is the default. `chrome: 'none' | 'rule' | 'band' | 'side'` adds a margin decoration (none unless you ask).
+- **Fonts** are the shipped files in `<skills-root>/fonts/` (see its `README.md`), loaded by file URL; `font` is body, `head` is headings. Unset, Latin uses Rubik with InstrumentSerif headings (one weight; never bold it) and Arabic uses IBMPlexSansArabic with Cairo headings. Other shipped faces: Tajawal, Amiri, NotoNaskhArabic, Rubik (the only one with Hebrew). Other scripts: a system font name.
+- **Footer** is automatic: `footer` at the start side, `Page N of M` at the end (`صفحة N من M` in Arabic). `build` adjusts spacing a little toward whole pages and prints `pages` and `fill`; a short page may stay short. `{pages: N}` pins one chunk to N pages. `page()` is a hard break, `keep(...)` keeps blocks together.
+- **Your own layout**: `raw(html)` returns your HTML unchanged; the `css` option appends your CSS last, so it can also restyle any kit block. Colour variables: `var(--accent) --ink --muted --tint --rule --paper`; the page content width is the body width.
 
-## Continuation
+## Layout primitives (you compose every page from these)
 
-For a targeted change, update only the durable generator, preserve page setup and existing assets, rebuild the same output path, and rerun the relevant portable checks. Deep edits of arbitrary uploaded PDFs and form filling are not part of this skill's first-pass contract.
+There is no ready-made cover, masthead, row of key figures or card grid. Build what your direction calls for from these, so a depot review can look like a dispatch board and a field report like a notebook:
 
-## Runtime boundary
+- `text(html, {size, font, color, weight, caps, tag, style})`: any text in any voice. `size` `'display' | 'xl' | 'l' | 'm' | 's' | 'xs'` or points; `font` `'head' | 'body'`; `color` `'ink' | 'muted' | 'accent' | 'paper'` or any CSS colour; `caps` small uppercase (Latin only).
+- `grid(widths, cells, {gap, align})`: columns, `widths` relative (`[2, 1]`) or a count (`3`); cells are HTML (nest `text`, `box`, tables, charts, more grids). Mirrors in right-to-left.
+- `box(html, {fill, pad, edge, edgeColor, radius, minHeight})`: a region with a fill (`'tint' | 'accent' | 'ink' | 'none'` or a colour; accent and ink fills turn text paper-coloured) and an optional line on one edge (`'top' | 'start' | 'bottom' | 'all'`).
+- `rule({color, weight, width, space})`; `gap(px)`; `page()`; `keep(...)`.
+- Structure: `h1 h2 p small bullets ltr(text)`.
 
-The required packages and binaries are listed in the repository-root `DEPENDENCIES.md` and `registry/dependencies.json`. They must be available before authoring starts; runtime installs and replacement-skill downloads are outside this skill contract.
+## Data blocks (use where the data has that shape)
+- `table(rows, {widths, align, total, zebra})`: row 0 header; align letters `s` start, `e` end (numbers), `c` centre; rows never split and the header repeats.
+- `chart([[label, number, shown]], {type: 'columns' | 'bars', title, caption, height, highlight})` one-series chart in HTML and CSS; values start at zero; items in reading order (in Arabic the first sits at the right; never reverse them). Other charts: inline SVG you draw, with Arabic text as HTML beside it, not inside the SVG.
+- `bar([[label, number, shown]])` parts of a whole as one segmented bar; `timeline([[date, label]])` (two dates draw a span labelled with the interval, `{span}` overrides; never invent a middle step).
+- `icon(name)`, `pictogram(icon, on, total, caption)` (a count out of a total), `rings([[value, max, label, shown?]])` (shares, completion). Icon names are in `<skills-root>/icons/README.md`; use an icon only where it names the thing beside it.
+- Right-to-left: write text in logical order, never reversed or pre-shaped, no `letter-spacing`; wrap Latin phrases, emails, codes and number ranges inside Arabic in `ltr('…')`. Page furniture, tables, timelines, bars, charts, pictograms and rings mirror by themselves.
+
+## Check and look (every time)
+
+```
+python <skills-root>/pdf/check.py <project-root>/out/x.pdf --pages 2 --expect "Page 2 of 2" "key figure" [--text]
+python <skills-root>/artifact-taste/preview.py <project-root>/out/x.pdf
+```
+`check.py` opens the PDF strictly, counts pages, shows how far down each page is used, lists fonts and title, confirms the expected strings and exits 1 on failure. For Arabic it also confirms selectable letters in logical order and that all Arabic used a shipped font: pass Arabic phrases and the footer to `--expect`, e.g. `"صفحة 2 من 2"`. Then open the preview pages, fix what is wrong, rebuild.
+
+## Rules
+
+- Use only supplied facts and dates; label derived figures as derived and fictional scenarios as fictional. Do not invent sources.
+- No clipped or overlapping text, no remote assets; images are local files.
+- Eight or more pages: add a contents or overview page.
+- Continuation: patch the existing generator and rebuild the same path.

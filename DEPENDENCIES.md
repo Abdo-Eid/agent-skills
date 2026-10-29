@@ -8,11 +8,11 @@ This document lists the runtimes, packages, binaries, browsers, and fonts needed
 |---|---|
 | Authoring | Required to create the skill's primary output |
 | Analysis | Required only for input reading, profiling, or data preparation |
-| QA | Required by the host application's validation/rendering contract |
+| QA | Required by the skills' own check and preview commands |
 | Optional route | Required only when the skill selects that documented generation route |
 | Shared | Used across multiple skills or by repository/runtime setup |
 
-Hosts provide the dependencies needed by the selected skill. Other hosts may choose their own validation and rendering policy; format skills define portable authoring checks rather than assuming a particular host acceptance tool.
+The machine that runs a skill provides its dependencies. Each format skill carries its own checks, and `artifact-taste/preview.py` renders any output to page images; the skills assume no other validation or rendering tool.
 
 ## Image Target
 
@@ -23,6 +23,7 @@ Hosts provide the dependencies needed by the selected skill. Other hosts may cho
 | Python | 3.11.x |
 | Browser | Playwright Chromium headless shell |
 | Office engine | LibreOffice Writer, Calc, and Impress from Debian Bookworm |
+| XML parser | Python standard library, with expat 2.4.1 or newer (the OOXML validators check it and reject any DOCTYPE) |
 
 Package versions below are the current image pins or scaffold-declared ranges. They are not acceptance evidence: consumers must run the skill smoke matrix before promotion.
 
@@ -33,33 +34,29 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 | `python3`, `python3-pip` | PDF, XLSX, DOCX QA | Python generators, analysis, and validators |
 | Node.js 22 | PDF, PPTX, DOCX | JavaScript generators |
 | `zip`, `unzip` | All Office formats | Package inspection and source bundling |
-| LibreOffice Core | PPTX, XLSX, DOCX | Headless compatibility, recalculation, and PDF rendering |
-| `poppler-utils` | All rendered formats | `pdfinfo`, `pdftotext`, and `pdftoppm` |
-| `qpdf` | PDF | Structural PDF validation |
-| ImageMagick | PDF, PPTX, XLSX, DOCX | Rendered-image dimensions and contact sheets |
+| LibreOffice Core, Writer, Calc, Impress | PPTX, XLSX, DOCX, artifact-taste preview | Headless compatibility, recalculation, and conversion to PDF for page previews |
+| `poppler-utils` | PDF, artifact-taste preview | `pdftotext` for the Arabic text check; `pdftoppm` renders page images |
 | Chromium headless shell | PDF HTML route | Browser rendering |
 | DejaVu, Liberation, Noto, Noto CJK, Noto Color Emoji fonts | All visual formats | Predictable multilingual rendering and fallbacks |
 
 ## PDF
 
-### Authoring And Optional Routes
+### Authoring And Routes
 
 | Ecosystem | Package | Pinned version | Purpose | License |
 |---|---|---:|---|---|
-| Python | `reportlab` | 5.0.0 | Programmatic PDF generation | BSD |
-| Python | `pypdf` | 6.15.0 | PDF inspection, merging, and targeted manipulation | BSD-3-Clause |
-| Python | `Pillow` | 12.3.0 | Image normalization and dimensions | MIT-CMU |
-| Python | `matplotlib` | 3.11.1 | Optional local chart generation | PSF-compatible |
-| Node | `pdf-lib` | 1.17.1 | Optional JavaScript PDF manipulation route | MIT |
-| Node | `playwright` | 1.62.1 | Optional HTML/CSS-to-PDF route | Apache-2.0 |
+| Python | `pypdf` | 6.15.0 | PDF inspection, merging, targeted manipulation, and the check command | BSD-3-Clause |
+| Python | `Pillow` | 12.3.0 | Optional: image dimensions and normalization (no skill imports it) | MIT-CMU |
+| Python | `matplotlib` | 3.11.1 | Optional: chart images until DOCX has an SVG chart recipe (PDF charts are inline SVG) | PSF-compatible |
+| Node | `playwright` | 1.62.1 | HTML/CSS-to-PDF: the single PDF route for every language | Apache-2.0 |
+
+ReportLab is no longer used: `html.cjs` replaced it, including for Latin documents.
 
 ### QA
 
-- `qpdf`
-- `poppler-utils`
-- ImageMagick
+- `poppler-utils` (`pdftotext` for the Arabic text check)
 - Chromium headless shell for the HTML route
-- Shared fonts
+- Shared fonts, plus the Arabic-capable fonts shipped in `skills/fonts/`, which the HTML route loads by file URL
 
 ## PPTX
 
@@ -72,9 +69,7 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 ### QA
 
 - LibreOffice Impress
-- `defusedxml` 0.7.1 through the shared OOXML validator
-- `poppler-utils`
-- ImageMagick
+- The shared OOXML validator, which uses the Python standard library XML parser
 - Shared fonts
 
 ## XLSX
@@ -86,15 +81,12 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 | Python | `XlsxWriter` | 3.2.9 | New workbook creation, formulas, formatting, validation, and charts | BSD-2-Clause |
 | Python | `openpyxl` | 3.1.5 | Read-only analysis and deterministic QA inspection | MIT |
 | Python | `pandas` | 3.0.5 | Tabular analysis for XLSX, XLSM, CSV, and TSV inputs | BSD-3-Clause |
-| Python | `defusedxml` | 0.7.1 | Safe OOXML parsing in the validator | PSFL |
 
 `openpyxl` is not an arbitrary uploaded-workbook writer in this skill. Generated workbooks are written with XlsxWriter and recalculated through LibreOffice.
 
 ### Recalculation And QA
 
 - LibreOffice Calc
-- `poppler-utils`
-- ImageMagick
 - Shared fonts
 
 ## DOCX
@@ -104,13 +96,11 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 | Ecosystem | Package | Pinned version | Purpose | License |
 |---|---|---:|---|---|
 | Node | `docx` | 9.7.1 | Editable Word document generation | MIT |
-| Python | `defusedxml` | 0.7.1 | Safe package XML validation | PSFL |
+| Python | `pypdf` | 6.15.0 | Page count and page fill in the check (reads the LibreOffice PDF) | BSD-3-Clause |
 
 ### QA
 
 - LibreOffice Writer
-- `poppler-utils`
-- ImageMagick
 - Shared fonts
 
 ## Reference Installation
@@ -119,20 +109,20 @@ The commands below are a convenience baseline for Debian 12. Production deployme
 
 ```bash
 apt-get update && apt-get install -y --no-install-recommends \
-  python3 python3-pip zip unzip qpdf poppler-utils imagemagick \
+  python3 python3-pip zip unzip poppler-utils \
   libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress \
   fonts-dejavu fonts-liberation fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji
 ```
 
 ```bash
 pip3 install \
-  XlsxWriter==3.2.9 openpyxl==3.1.5 pandas==3.0.5 defusedxml==0.7.1 \
-  reportlab==5.0.0 pypdf==6.15.0 Pillow==12.3.0 matplotlib==3.11.1
+  XlsxWriter==3.2.9 openpyxl==3.1.5 pandas==3.0.5 \
+  pypdf==6.15.0 Pillow==12.3.0 matplotlib==3.11.1
 ```
 
 ```bash
 npm install -g \
-  playwright@1.62.1 pptxgenjs@4.0.1 docx@9.7.1 pdf-lib@1.17.1
+  playwright@1.62.1 pptxgenjs@4.0.1 docx@9.7.1
 npx playwright install --only-shell chromium
 ```
 
@@ -141,9 +131,9 @@ npx playwright install --only-shell chromium
 Verify dependencies before publishing an image:
 
 ```bash
-python3 -c "import xlsxwriter, openpyxl, pandas, defusedxml, reportlab, pypdf, PIL, matplotlib"
-node -e "require('playwright'); require('pptxgenjs'); require('docx'); require('pdf-lib')"
-command -v soffice qpdf pdfinfo pdftoppm convert zip unzip
+python3 -c "import xlsxwriter, openpyxl, pandas, pypdf, PIL, matplotlib; from xml.parsers import expat; assert expat.version_info >= (2, 4, 1)"
+node -e "require('playwright'); require('pptxgenjs'); require('docx')"
+command -v soffice pdfinfo pdftoppm pdftotext zip unzip
 ```
 
 The consuming host should additionally run representative creation, recalculation, rendering, and validator smoke tests. Package presence alone does not prove the complete skill contract.
