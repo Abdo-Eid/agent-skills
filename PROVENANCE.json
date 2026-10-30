@@ -15,7 +15,7 @@
     {
       "path": "skills/artifact-taste",
       "origin": "First-party synthesis",
-      "evidence": "Design-process guidance written for this pack and a page preview script built on LibreOffice and poppler command-line tools; no third-party text or code copied",
+      "evidence": "Design-process guidance and per-format references written for this pack, a dial dealer using only the Python standard library, and a page preview script built on LibreOffice and poppler command-line tools; no third-party text or code copied",
       "license": "LicenseRef-Proprietary"
     },
     {

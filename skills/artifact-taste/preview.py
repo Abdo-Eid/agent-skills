@@ -104,18 +104,24 @@ def main() -> int:
     has_sheet = sheet(pages, out / "sheet.png")
     print(json.dumps({"pages": len(pages), "pageFiles": [str(p) for p in pages],
                       "sheet": str(out / "sheet.png") if has_sheet else None}))
-    note = direction(source.parent.parent / "src")
+    src = source.parent.parent / "src"
+    note, dials = comment(src, "Direction:"), comment(src, "Dials:")
     if note:
-        print(f"\nYOUR DIRECTION: {note}\n"
-              "Before you finish, check every page against it: for each page, name what on it comes from that direction. "
-              "A page that could sit unchanged in any document of this kind is the template, not your direction: rebuild it and preview again.")
-    else:
-        print("\nNo 'Direction:' comment found in the generator under src/. Write one (see artifact-taste), then check every page against it.")
+        print(f"\nYOUR DIRECTION: {note}")
+    if dials:
+        print(f"YOUR DIALS: {dials}")
+    if note or dials:
+        print("Before you finish, check every page against both: name what on each page comes from the direction, and whether it shows "
+              "the dials you chose (shape, line, contrast, ground, type, scale, density, rhythm, alignment, colour). "
+              "A page that could sit unchanged in any document of this kind, or that shows other dials, is the template: rebuild it and preview again.")
+    if not note or not dials:
+        missing = " and ".join(k for k, v in (("Direction:", note), ("Dials:", dials)) if not v)
+        print(f"\nNo '{missing}' comment found in the generator under src/. Write it (see artifact-taste), then check every page against it.")
     return 0
 
 
-def direction(src: Path) -> str:
-    """The 'Direction:' comment of the generator, joined across its comment lines."""
+def comment(src: Path, key: str) -> str:
+    """A 'Key:' comment of the generator, joined across its continuation comment lines."""
     if not src.is_dir():
         return ""
     for f in sorted(src.rglob("*")):
@@ -123,11 +129,11 @@ def direction(src: Path) -> str:
             continue
         lines = f.read_text(encoding="utf-8", errors="ignore").splitlines()
         for i, line in enumerate(lines):
-            if "Direction:" in line:
-                parts = [line.split("Direction:", 1)[1].strip()]
+            if key in line:
+                parts = [line.split(key, 1)[1].strip()]
                 for nxt in lines[i + 1:i + 6]:
                     s = nxt.strip()
-                    if not s.startswith(("//", "#", "*")) or "Direction:" in s:
+                    if not s.startswith(("//", "#", "*")) or "Direction:" in s or "Dials:" in s:
                         break
                     parts.append(s.lstrip("/#* ").strip())
                 return " ".join(p for p in parts if p)

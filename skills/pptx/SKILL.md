@@ -6,7 +6,7 @@ license: Proprietary; see the repository-root LICENSE.
 
 # PPTX
 
-Read `<skills-root>/artifact-taste/SKILL.md` first: decide what this deck should be before you open the kit.
+Read `<skills-root>/artifact-taste/SKILL.md`, then `<skills-root>/artifact-taste/pptx.md`, first: decide what this deck should be before you open the kit.
 
 Write one generator `<project-root>/src/build.cjs` on `require('<skills-root>/pptx/kit.cjs')` (PptxGenJS 4.0.1 underneath; `d.pptx` is the raw instance). Run it with `NODE_PATH` set; it writes `<project-root>/out/deck.pptx` (16:9 unless the user supplies a template or another ratio). Continuation: patch the existing generator, keep its tokens, slide order and assets, rebuild. Editing uploaded PPTX internals is out of scope.
 
@@ -22,13 +22,13 @@ Write one generator `<project-root>/src/build.cjs` on `require('<skills-root>/pp
 ```js
 // Direction: <subject material, chosen structure, why>
 const { deck } = require('<skills-root>/pptx/kit.cjs');
-const d = deck({ palette: '<chosen>' /* or your own object */, fonts: '<chosen>', rtl: false, title: '...', footer: 'on every slide' });
+const d = deck({ style: { /* your stylesheet, see artifact-taste "Styling" */ }, rtl: false, title: '...', footer: 'on every slide' });
 let s = d.slide({ /* cover, dark, bg, note, num */ });
-// compose the slide: split the page into boxes, place primitives in them (or s.addText / s.addShape / s.addChart / s.addImage)
+// compose the slide: split the page into boxes, place text and regions in them with your classes
 d.save('<project-root>/out/deck.pptx'); // last line; prints slide count
 ```
 
-**Colours are required**: `palette` `coral forest ocean plum ink dune midnight graphite` (the last two are dark) or your own object `bg surface ink muted accent accent2 rule deep` (optional `accentText`, `accentDk`). Choose from the subject; there is no default. Fonts: `editorial grotesk condensed technical` or `{head, body, mono, stat, headBold}`; only Arial, Arial Narrow, Times New Roman and Courier New are safe in every renderer (and the Noto Arabic faces for Arabic). Colours for hand drawing: `s.c` (`ink muted accent accentText accent2 surface rule bg onAccent deep`).
+**Style.** `style` is CSS as an object (see artifact-taste). Variables `--accent --ink --bg --muted --surface --rule --accent2 --deep` set the slide colours, and `--accent` is required (or a `palette`: `coral forest ocean plum ink dune midnight graphite`, as a starting set). Elements: `body` (all text), `th`, `td` (tables), `chart` (chart labels). Properties a slide can do: `fontFamily fontSize fontWeight fontStyle color lineHeight letterSpacing textTransform textAlign verticalAlign background padding border borderTop borderBottom borderInlineStart borderInlineEnd borderRadius opacity`, plus `pptx: {…}` for raw PptxGenJS options. Anything else stops the build and says what to do instead. `fontFamily` lists are resolved to a face every PowerPoint and LibreOffice has (Arial, Arial Narrow, Times New Roman, Courier New, or `serif / sans-serif / monospace`); right-to-left text uses the Noto Arabic faces.
 
 `d.slide(opts)` makes a slide: `cover` (no footer or number), `dark` (the palette's deep colours), `bg`, `note` (footer text for this slide), `num`. The footer line and slide number are added on non-cover slides.
 
@@ -42,13 +42,15 @@ There is no ready-made cover, slide header, row of big numbers, step row or card
 | `d.split(box, at, dir, gap)` | two boxes: `at` a share (0..1) or inches (> 1); `dir` `'h'` side by side, `'v'` stacked |
 | `d.grid(box, cols, rows, gap)` | cell boxes row by row; `cols` a count or relative widths `[2, 1, 1]` |
 | `d.inset(box, pad)` | the box shrunk by `pad` on every side |
+| `d.stack(s, box, [[str, cls], …], gap)` | places text items top to bottom, each as tall as its class needs; returns the space left below |
 
-**Primitives** (each takes a box and fills it):
+**Primitives** (each takes a box and fills it; `cls` is a class name or array, inline CSS goes in the box object):
 
 | call | what it draws |
 | --- | --- |
-| `d.text(s, str, {x,y,w,h,font:'head'\|'body'\|'stat'\|'mono',fontSize,color,bold,align:'start'\|'end'\|'center',valign,...})` | any text at any size; extra keys go to PptxGenJS (`charSpacing`, `italic`, `lineSpacingMultiple`…) |
-| `d.stat(s,{x,y,w,h,value,label,size,color})` | one big number with its label, shrunk to stay on one line |
+| `d.text(s, str, cls, {x,y,w,h, ...inline})` | text in your class |
+| `d.box(s, cls, {x,y,w,h})` | a region: background, border, radius, per-side borders from the class; returns the inside box after `padding` |
+| `d.stat(s,{x,y,w,h,value,label,cls,labelCls})` | one big number (shrunk to stay on one line) with its label |
 | `d.rect(s,{x,y,w,h,fill,line,lw,shape,alpha})`, `d.rule(s, x, y, w, color, pt)`, `d.panel(s,{x,y,w,h,fill,bar:'top'\|'left'})` | shapes, lines, a filled region (returns its padded inside) |
 | `d.table(s,{x,y,w,h,cols:[3,4,4],head:[],rows:[[]]})` | native table, rows share the height |
 | `d.bars(s,{x,y,w,h,labels,values\|series:[{name,values}],dir:'bar'\|'col',fmt,hi?})` | native chart with value labels; `fmt` `'$#,##0'`, `'0%'` (fractions), `'0.0'`; `hi` highlights one |
@@ -58,11 +60,11 @@ Anything else: `s.addChart`, `s.addImage`, `s.addShape` directly, with `d.X(x, w
 
 ## Rules
 
-- Titles 28 pt or more, body 14 pt or more, labels 11 pt or more. No clipped or overlapping text; avoid `fit: 'shrink'`.
+- Titles 28 pt or more, body 14 pt or more, labels 12 pt or more. No clipped or overlapping text; avoid `fit: 'shrink'`.
 - Native charts and tables, not pictures of them; images keep their aspect ratio.
 - Two dates only: never invent middle steps. Risk matrices: marker positions from named likelihood and impact maps; axis labels outside the grid.
 - Reconcile numbers, dates and labels against the brief; drop invented dates and causal claims.
 
 ## Arabic and right-to-left
 
-`deck({rtl: true})`: write coordinates left-to-right; the kit mirrors layout, tables and charts, so never reverse data yourself. Fonts are Noto Naskh/Sans Arabic unless you pass `fonts: {head, body}`; use `d.text` (raw `s.addText` needs `rtlMode: true` and `lang: 'ar-SA'`). Keep the digit style consistent.
+`deck({rtl: true})`: write coordinates left-to-right; the kit mirrors layout, tables and charts, so never reverse data yourself. Text uses the Noto Naskh/Sans Arabic faces; `textAlign: start` is the right side. Use `d.text` (raw `s.addText` needs `rtlMode: true` and `lang: 'ar-SA'`). Keep the digit style consistent.

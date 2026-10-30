@@ -66,56 +66,115 @@ function faces(family) {
 }
 const stack = (f) => (fs.existsSync(path.join(FONTS, f)) ? cssStr(f) + ',' : f + ',') + 'sans-serif';
 
+// ---- stylesheet: CSS written as an object (the shared concept is in artifact-taste/SKILL.md, "Styling").
+// '--name' variables, element selectors (ELEMENTS), '.class' rules with `composes`, camelCase CSS properties,
+// a `pdf: {...}` key for raw CSS. Compiled to real CSS; every property Chromium supports works.
+const ELEMENTS = { body: 'body', h1: '.h1', h2: '.h2', p: 'p', small: '.small', ul: 'ul', li: 'li', a: 'a', b: 'b', table: 'table', th: 'th', td: 'td',
+  total: '.total td', caption: 'figcaption', chart: '.chart', bar: '.bar', timeline: '.tl', pictogram: '.picto', rings: '.rings', icon: '.ic' };
+const UNITLESS = new Set(['fontWeight', 'lineHeight', 'opacity', 'zIndex', 'flex', 'flexGrow', 'flexShrink', 'order', 'columnCount', 'orphans', 'widows']);
+const kebab = (k) => (k.startsWith('--') ? k : k.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase()));
+
+class Sheet {
+  constructor(style = {}, rtl = false, script = '') {
+    this.rtl = rtl; this.script = script; this.vars = {}; this.classes = {}; this.elements = {}; this.used = []; this.families = new Set(); this.warn = [];
+    for (const [k, v] of Object.entries(style)) {
+      if (k.startsWith('--')) this.vars[k] = v;
+      else if (k.startsWith('.')) this.classes[k.slice(1)] = v;
+      else if (ELEMENTS[k]) this.elements[k] = v;
+      else throw new Error(`style: "${k}" is not a variable (--name), a class (.name) or an element (${Object.keys(ELEMENTS).join(' ')})`);
+    }
+  }
+  value(prop, v) {
+    if (Array.isArray(v) || prop === 'fontFamily') {
+      const list = (Array.isArray(v) ? v : String(v).split(',')).map((f) => String(f).trim().replace(/^["']|["']$/g, ''));
+      // right-to-left: the document's script face goes before the generic fallback, so Latin faces in a list never leave Arabic letters to a system font
+      if (this.script && !list.includes(this.script)) { const g = list.findIndex((f) => /^(serif|sans-serif|monospace)$/.test(f)); list.splice(g < 0 ? list.length : g, 0, this.script); }
+      list.forEach((f) => fs.existsSync(path.join(FONTS, f)) && this.families.add(f));
+      return list.map((f) => (/^(serif|sans-serif|monospace)$/.test(f) ? f : cssStr(f))).join(',');
+    }
+    if (typeof v === 'number') return UNITLESS.has(prop) ? String(v) : `${v}pt`;
+    const s = String(v);
+    return this.vars[`--${s}`] !== undefined ? `var(--${s})` : s;
+  }
+  /** props object -> 'a:b;' declarations, following `composes` */
+  decls(props, seen = new Set()) {
+    let out = '';
+    for (const c of [].concat(props.composes || [])) {
+      const n = String(c).replace(/^\./, '');
+      if (seen.has(n)) throw new Error(`style: class .${n} composes itself`);
+      if (!this.classes[n]) throw new Error(`style: composes unknown class .${n}`);
+      out += this.decls(this.classes[n], new Set([...seen, n]));
+    }
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'composes' || k === 'tag') continue;
+      if (k === 'pdf') { out += typeof v === 'string' ? v : this.decls(v, seen); continue; }
+      if (['pptx', 'docx', 'xlsx'].includes(k)) continue; // other kits' raw options
+      if (this.rtl && k === 'letterSpacing') { this.warn.push('letterSpacing ignored in right-to-left text (it breaks letter joining)'); continue; }
+      const val = this.value(k, v);
+      if (k === 'fontSize' && typeof v === 'number' && v < 8.5) this.warn.push(`fontSize ${v}pt is below the 8.5pt reading floor`);
+      this.used.push([k, val]);
+      out += `${kebab(k)}:${val};`;
+    }
+    return out;
+  }
+  /** class attribute for a primitive: 'name' | '.name' | ['a', 'b'] */
+  cls(c) {
+    const names = [].concat(c || []).flatMap((x) => String(x).split(/\s+/)).filter(Boolean).map((x) => x.replace(/^\./, ''));
+    for (const n of names) if (!this.classes[n]) throw new Error(`style: no class .${n}; defined: ${Object.keys(this.classes).map((x) => '.' + x).join(' ') || '(none)'}`);
+    return names.map((n) => `c-${n}`).join(' ');
+  }
+  css() {
+    const root = Object.entries(this.vars).map(([k, v]) => `${k}:${this.value(k, v)};`).join('');
+    const el = Object.entries(this.elements).map(([k, v]) => `${ELEMENTS[k]}{${this.decls(v)}}`).join('\n');
+    const cl = Object.entries(this.classes).map(([k, v]) => `.c-${k}{${this.decls(v)}}`).join('\n');
+    return `${root ? `:root{${root}}` : ''}\n${el}\n${cl}`;
+  }
+}
+// the inline tail of every primitive: (…, cls, inline) where an object in the cls slot is treated as inline
+const tail = (cls, inline) => (cls && typeof cls === 'object' && !Array.isArray(cls) ? ['', cls] : [cls || '', inline || {}]);
+
 class Doc {
-  /** new Doc({lang, theme | accent (+ ink muted tint rule paper chrome), font, head, size:'A4', title, footer, header, numbers, css}) */
+  /** new Doc({lang, style, theme | accent, font, head, size:'A4', title, footer, header, numbers, css}) */
   constructor(o = {}) {
     const lang = o.lang || 'en';
     this.o = { size: 'A4', title: 'Document', footer: '', header: '', margin: 20, digits: '', numbers: false, css: '', ...o, lang };
     this.rtl = o.dir ? o.dir === 'rtl' : RTL.includes(lang);
     this.font = o.font || (this.rtl && lang !== 'he' ? 'IBMPlexSansArabic' : 'Rubik');
     this.head = o.head || (!this.rtl ? (fs.existsSync(path.join(FONTS, DISPLAY)) ? DISPLAY : this.font) : lang === 'he' ? 'Rubik' : 'Cairo');
-    if (!o.theme && !o.accent) throw new Error(`choose the colours for this document: theme (${Object.keys(THEMES).join(' ')}) or your own accent, optionally with ink muted tint rule paper`);
+    const style = o.style || {};
+    if (!o.theme && !o.accent && !style['--accent']) throw new Error(`choose the colours for this document: style {'--accent': '#…', …}, or theme (${Object.keys(THEMES).join(' ')}), or accent`);
     const base = typeof o.theme === 'object' ? o.theme : o.theme ? THEMES[o.theme] : {};
-    if (!base) throw new Error('unknown theme ' + o.theme + ': ' + Object.keys(THEMES).join(' ') + ', or pass your own accent');
+    if (!base) throw new Error('unknown theme ' + o.theme + ': ' + Object.keys(THEMES).join(' ') + ', or set --accent in style');
     this.t = { ...NEUTRAL, ...base };
     for (const k of TOKENS) if (o[k]) this.t[k] = o[k];
+    for (const k of TOKENS) if (style[`--${k}`]) this.t[k] = style[`--${k}`];
+    this.s = new Sheet(style, this.rtl, this.rtl ? this.font : '');
     if (!SIZES[this.o.size]) throw new Error('size must be A4 or Letter');
   }
+  _el(tag, base, html, cls, inline) {
+    const [c, i] = tail(cls, inline);
+    const t = i.tag || tag, st = this.s.decls(i), k = [base, this.s.cls(c)].filter(Boolean).join(' ');
+    return `<${t}${k ? ` class="${k}"` : ''}${st ? ` style="${st.replace(/"/g, '&quot;')}"` : ''}>${html}</${t}>`;
+  }
 
-  // ---- layout primitives (there is no ready-made cover, masthead, figure row or card grid: compose them)
-  /** Text in any voice. size: 'display' | 'xl' | 'l' | 'm' | 's' | 'xs' or points; font: 'head' | 'body'; color: 'ink' | 'muted' | 'accent' | 'paper' | any CSS colour;
-   *  weight; caps (small uppercase, Latin only); tag ('div', 'h1', 'p', 'span'…); style (extra CSS). */
-  text(html, { size = 'm', font = 'body', color = 'ink', weight, caps = false, tag = 'div', style = '' } = {}) {
-    const em = { display: 3.6, xl: 2.4, l: 1.6, m: 1, s: 0.85, xs: 0.72 };
-    const big = typeof size === 'number' ? size >= 20 : (em[size] || 1) >= 1.6;
-    const fsz = typeof size === 'number' ? `${size}pt` : `${em[size] || 1}em`;
-    const c = ['ink', 'muted', 'accent', 'paper', 'tint', 'rule'].includes(color) ? `var(--${color})` : color;
-    const w = weight || (font === 'head' ? 'var(--hw)' : 400);
-    const cp = caps && !this.rtl ? 'text-transform:uppercase;letter-spacing:.1em;' : '';
-    return `<${tag} class="tx" style="font-size:${fsz};font-family:var(--${font === 'head' ? 'hf' : 'bf'});color:${c};font-weight:${w};line-height:${big ? (this.rtl ? 1.35 : 1.08) : 'inherit'};${cp}${style}">${html}</${tag}>`;
-  }
-  /** Columns: widths as relative numbers ([2, 1]) or a count (3); cells are HTML strings. gap in mm; align 'start' | 'center' | 'end' | 'stretch'. Mirrors in right-to-left. */
-  grid(widths, cells, { gap = 6, align = 'start', style = '' } = {}) {
+  // ---- layout primitives. Every one ends in (cls, inline): a class name or names from your style, then inline CSS props.
+  // There is no ready-made cover, masthead, figure row or card grid: compose them.
+  /** Text in a class: text('93%', 'figure'), text('North', 'label', { color: 'accent' }); inline `tag` sets the element ('h1', 'p', 'span'…). */
+  text(html, cls, inline) { return this._el('div', 'tx', html, cls, inline); }
+  /** A region (background, padding, borders, radius come from its class or inline props). */
+  box(html, cls, inline) { return this._el('div', 'bx', html, cls, inline); }
+  /** Columns: widths relative ([2, 1]) or a count (3); cells are HTML. Spacing and alignment by class or inline (gap, alignItems). Mirrors in right-to-left. */
+  grid(widths, cells, cls, inline) {
     const w = Array.isArray(widths) ? widths : Array(widths).fill(1);
-    return `<div class="gr" style="grid-template-columns:${w.map((x) => `minmax(0,${x}fr)`).join(' ')};gap:${gap}mm;align-items:${align};${style}">${cells.map((c) => `<div>${c}</div>`).join('')}</div>`;
+    const [c, i] = tail(cls, inline);
+    return this._el('div', 'gr', cells.map((x) => `<div>${x}</div>`).join(''), c, { gridTemplateColumns: w.map((x) => `minmax(0,${x}fr)`).join(' '), ...i });
   }
-  /** A region: fill 'none' | 'tint' | 'accent' | 'ink' | any CSS colour; pad in mm; edge 'none' | 'top' | 'start' | 'bottom' | 'all' (a line in edgeColor); radius in mm; minHeight in mm. */
-  box(html, { fill = 'none', pad = 5, edge = 'none', edgeColor = 'accent', weight = 1.5, radius = 0, minHeight = 0, style = '' } = {}) {
-    const v = (x) => (['ink', 'muted', 'accent', 'paper', 'tint', 'rule'].includes(x) ? `var(--${x})` : x);
-    const bg = fill === 'none' ? 'transparent' : v(fill), fg = fill === 'accent' || fill === 'ink' ? 'color:var(--paper);' : '';
-    const ln = `${weight}px solid ${v(edgeColor)}`;
-    const ed = edge === 'all' ? `border:${ln};` : edge === 'top' ? `border-top:${ln};` : edge === 'bottom' ? `border-bottom:${ln};` : edge === 'start' ? `border-inline-start:${ln};` : '';
-    return `<div class="bx" style="background:${bg};${fg}padding:${pad}mm;${ed}border-radius:${radius}mm;${minHeight ? `min-height:${minHeight}mm;` : ''}${style}">${html}</div>`;
-  }
-  /** A line: color, weight in px, width ('100%' or mm), space above and below in mm. */
-  rule({ color = 'rule', weight = 1, width = '100%', space = 4 } = {}) {
-    const c = ['ink', 'muted', 'accent', 'rule'].includes(color) ? `var(--${color})` : color;
-    return `<div style="height:0;border-top:${weight}px solid ${c};width:${typeof width === 'number' ? width + 'mm' : width};margin:${space}mm 0"></div>`;
-  }
-  h1(t) { return `<h2 class="h1">${t}</h2>`; }
-  h2(t) { return `<h3 class="h2">${t}</h3>`; }
-  p(t) { return `<p>${t}</p>`; }
-  small(t) { return `<p class="small">${t}</p>`; }
+  /** A horizontal line; style it with borderTop and margin in its class or inline. */
+  rule(cls, inline) { return this._el('div', 'rl', '', cls, inline); }
+  h1(t, cls, inline) { return this._el('h2', 'h1', t, cls, inline); }
+  h2(t, cls, inline) { return this._el('h3', 'h2', t, cls, inline); }
+  p(t, cls, inline) { return this._el('p', '', t, cls, inline); }
+  small(t, cls, inline) { return this._el('p', 'small', t, cls, inline); }
   bullets(items) { return `<ul>${items.map((x) => `<li>${x}</li>`).join('')}</ul>`; }
   /** Latin phrase, number range or code inside Arabic text: keeps its own left-to-right order. */
   ltr(t) { return `<bdi dir="ltr">${t}</bdi>`; }
@@ -148,7 +207,8 @@ class Doc {
   /** One-series chart in plain HTML and CSS (selectable text, shipped fonts, mirrors by itself in right-to-left documents):
    *  chart([[label, value, shownText?]], { type: 'columns' | 'bars', title, caption, height (mm, columns), highlight: 'last' | 'max' | 'all' | index }).
    *  Order follows reading order: in Arabic the first item sits at the right. Values start at zero. */
-  chart(items, { type = 'columns', title, caption, height = 52, highlight } = {}) {
+  chart(items, { type = 'columns', title, caption, height = 52, highlight, cls } = {}) {
+    const k = this.s.cls(cls) ? ' ' + this.s.cls(cls) : '';
     const max = Math.max(...items.map(([, v]) => v), 0) || 1;
     const hi = highlight ?? (type === 'bars' ? 'max' : 'last');
     const on = (v, i) => hi === 'all' || (hi === 'last' && i === items.length - 1) || (hi === 'max' && v === max) || hi === i;
@@ -156,11 +216,11 @@ class Doc {
     const foot = caption ? `<figcaption>${caption}</figcaption>` : '';
     if (type === 'bars') {
       const rows = items.map(([l, v, shown], i) => `<span class="cl">${l}</span><div class="ct"><div class="cf${on(v, i) ? ' on' : ''}" style="width:${Math.max(v / max * 100, 1.5).toFixed(1)}%"></div></div><b>${shown ?? v}</b>`).join('');
-      return `<figure class="chart hbars">${head}<div class="cg">${rows}</div>${foot}</figure>`;
+      return `<figure class="chart hbars${k}">${head}<div class="cg">${rows}</div>${foot}</figure>`;
     }
     const cols = items.map(([, v, shown], i) => `<div class="cc"><b>${shown ?? v}</b><div class="cf${on(v, i) ? ' on' : ''}" style="--v:${(v / max).toFixed(3)}"></div></div>`).join('');
     const axis = items.map(([l]) => `<span>${l}</span>`).join('');
-    return `<figure class="chart vcols">${head}<div class="plot" style="height:${height}mm">${cols}</div><div class="axis">${axis}</div>${foot}</figure>`;
+    return `<figure class="chart vcols${k}">${head}<div class="plot" style="height:${typeof height === 'number' ? height + 'mm' : height}">${cols}</div><div class="axis">${axis}</div>${foot}</figure>`;
   }
   /** 3 to 5 points. Exactly two points draw a span bar labelled with the interval (computed from the dates, or span: '8 weeks'). */
   timeline(items, { span } = {}) {
@@ -169,12 +229,12 @@ class Doc {
     return `<div class="tl" style="--n:${items.length}">${items.map(([d, l], i) => `<div><b>${d}</b><i>${i === 0 && label ? `<u>${label}</u>` : ''}</i><span>${l}</span></div>`).join('')}</div>`;
   }
   /** rows[0] is the header; widths relative; align string of s (start) | e (end, numbers) | c per column; total: last row is a total. */
-  table(rows, { widths, align, total = false, zebra = false } = {}) {
+  table(rows, { widths, align, total = false, zebra = false, cls } = {}) {
     const n = rows[0].length, w = widths || Array(n).fill(1), sum = w.reduce((a, b) => a + b, 0);
     const al = (align || 's'.repeat(n)).split('').map((c) => ({ l: 'start', s: 'start', r: 'end', e: 'end', c: 'center' }[c] || 'start'));
     const cell = (tag, r) => r.map((c, i) => `<${tag} style="text-align:${al[i]}">${c}</${tag}>`).join('');
     const body = rows.slice(1).map((r, i) => `<tr${total && i === rows.length - 2 ? ' class="total"' : ''}>${cell('td', r)}</tr>`).join('');
-    return `<table class="${zebra ? 'zebra' : ''}"><colgroup>${w.map((x) => `<col style="width:${(100 * x / sum).toFixed(2)}%">`).join('')}</colgroup><thead><tr>${cell('th', rows[0])}</tr></thead><tbody>${body}</tbody></table>`;
+    return `<table class="${[zebra ? 'zebra' : '', this.s.cls(cls)].filter(Boolean).join(' ')}"><colgroup>${w.map((x) => `<col style="width:${(100 * x / sum).toFixed(2)}%">`).join('')}</colgroup><thead><tr>${cell('th', rows[0])}</tr></thead><tbody>${body}</tbody></table>`;
   }
 
   // ---- page chrome: margin boxes (text stays real and selectable, Chromium draws 'N of M')
@@ -204,15 +264,18 @@ class Doc {
     const dig = o.digits || 'decimal-leading-zero';
     const track = ar ? '' : 'letter-spacing:.12em;text-transform:uppercase;';
     const sh = 'color-mix(in srgb,var(--accent) calc(100% - var(--k)*22%),var(--paper))';
-    return `${faces(this.font)}${this.head !== this.font ? faces(this.head) : ''}
+    const sheet = this.s.css(); // compiled first: it collects the shipped fonts the stylesheet names
+    const more = [...this.s.families].filter((f) => f !== this.font && f !== this.head).map(faces).join('');
+    return `${faces(this.font)}${this.head !== this.font ? faces(this.head) : ''}${more}
 ${this._pageCss(mt, mb, W, H)}
 :root{--ink:${t.ink};--muted:${t.muted};--accent:${t.accent};--tint:${t.tint};--rule:${t.rule};--paper:${t.paper};--hf:${hf};--bf:${bf};--hw:${hw}}
-.gr{display:grid;margin-bottom:calc(1.1em*var(--s));break-inside:avoid}.gr>div>:last-child,.bx>:last-child{margin-bottom:0}
+.rl{height:0;border-top:1px solid var(--rule);margin:4mm 0}
+.gr{display:grid;gap:6mm;margin-bottom:calc(1.1em*var(--s));break-inside:avoid}.gr>div>:last-child,.bx>:last-child{margin-bottom:0}
 .bx{margin-bottom:calc(1.1em*var(--s));break-inside:avoid}.gr .bx{margin-bottom:0}
-.tx{margin:0 0 .35em}
+.tx{margin:0 0 .35em;font-weight:inherit}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{width:${W - 2 * o.margin}mm;font-family:${bf};color:var(--ink);-webkit-print-color-adjust:exact;counter-reset:sec}
+body{width:${W - 2 * o.margin}mm;font-family:${bf};color:var(--ink);-webkit-print-color-adjust:exact;counter-reset:sec;font-synthesis:none}
 .pg{--s:1;--f:calc(1 + .12*(var(--s) - 1));font-size:calc(${ar ? 10.5 : 10}pt*var(--f));line-height:${ar ? 1.85 : 1.6};display:flow-root;break-after:page;position:relative}
 .pg:last-child{break-after:auto}
 .pg>:first-child{margin-top:0}
@@ -260,9 +323,10 @@ table{width:100%;border-collapse:collapse;margin-bottom:calc(1.1em*var(--s));tab
 thead{display:table-header-group}tr{break-inside:avoid}
 th,td{padding:calc(.55em*var(--s)) .75em;vertical-align:middle;overflow-wrap:anywhere}
 td{border-bottom:.5pt solid var(--rule)}td:first-child{font-weight:500}
-th{font-weight:700;font-size:.76em;${track}color:var(--muted);border-bottom:1px solid var(--ink)}
+th{font-weight:700;font-size:.86em;${track}color:var(--muted);border-bottom:1px solid var(--ink)}
 .total td{font-weight:700;border-top:1px solid var(--ink);border-bottom:0}
 .zebra tbody tr:nth-child(even){background:var(--tint)}
+${sheet}
 ${o.css}`;
   }
 
@@ -284,6 +348,23 @@ ${o.css}`;
       await page.emulateMedia({ media: 'print' });
       await page.goto(pathToFileURL(src).href);
       await page.evaluate(() => document.fonts.ready);
+      // fail loudly on style properties Chromium does not know; warn on values it cannot use
+      const check = await page.evaluate((pairs) => {
+        const known = new Set(Object.keys(document.body.style));
+        const lev = (a, b) => { const d = Array.from({ length: b.length + 1 }, (_, i) => i); for (let i = 1; i <= a.length; i++) { let p = d[0]; d[0] = i; for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, p + (a[i - 1] === b[j - 1] ? 0 : 1)); p = t; } } return d[b.length]; };
+        const near = (p) => [...known].filter((k) => !/^\d|^webkit/i.test(k)).map((k) => [k, lev(p, k)]).sort((a, b) => a[1] - b[1])[0][0];
+        const kebab = (k) => k.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase());
+        const unknown = [], bad = [];
+        for (const [p, v] of pairs) {
+          if (p.startsWith('--')) continue;
+          if (!known.has(p)) unknown.push(`${p} (did you mean ${near(p)}?)`);
+          else if (!CSS.supports(kebab(p), v)) bad.push(`${p}: ${v}`);
+        }
+        return { unknown: [...new Set(unknown)], bad: [...new Set(bad)] };
+      }, this.s.used);
+      if (check.unknown.length) throw new Error(`style: unknown CSS properties: ${check.unknown.join(', ')}`);
+      check.bad.forEach((b) => console.log(`WARN style value not usable, ignored by the browser: ${b}`));
+      [...new Set(this.s.warn)].forEach((w) => console.log(`WARN ${w}`));
       const avail = (H - mt - mb) * MM;
       let info, count, slack = 0.93;
       for (let i = 0; i < 4; i++) {
@@ -293,6 +374,25 @@ ${o.css}`;
         if (count <= info.reduce((a, s) => a + s.n, 0)) break;
         slack -= 0.04;
       }
+      // readability on the laid-out page: text under 8.5pt, and small text with contrast under 4.5:1 against what is behind it
+      const read = await page.evaluate(() => {
+        const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+        const lum = ([r, g, b]) => [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+        const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+        const paper = rgb(getComputedStyle(document.documentElement).getPropertyValue('--paper').trim().replace(/^#(..)(..)(..)$/, (_, r, g, b) => `${parseInt(r, 16)},${parseInt(g, 16)},${parseInt(b, 16)}`) || '255,255,255');
+        const behind = (el) => { for (let e = el; e; e = e.parentElement) { const b = getComputedStyle(e).backgroundColor; const v = rgb(b); if (v.length >= 3 && (v[3] === undefined || v[3] > 0.5)) return v; } return paper; };
+        const tiny = [], faint = [];
+        for (const el of document.querySelectorAll('.pg *')) {
+          const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+          if (!own || el.closest('svg')) continue;
+          const cs = getComputedStyle(el), pt = parseFloat(cs.fontSize) * 0.75, txt = el.textContent.trim().slice(0, 30);
+          if (pt < 8.5) tiny.push(`"${txt}" ${pt.toFixed(1)}pt`);
+          else if (pt < 14 && ratio(rgb(cs.color), behind(el)) < 4.5) faint.push(`"${txt}" ${ratio(rgb(cs.color), behind(el)).toFixed(1)}:1`);
+        }
+        return { tiny, faint };
+      });
+      if (read.tiny.length) console.log(`WARN ${read.tiny.length} text runs under 8.5pt, e.g. ${read.tiny.slice(0, 3).join(', ')}`);
+      if (read.faint.length) console.log(`WARN ${read.faint.length} small text runs under 4.5:1 contrast, e.g. ${read.faint.slice(0, 3).join(', ')}`);
       const fill = info.map((s) => s.fill);
       console.log('built', file, JSON.stringify({ pages: count, fill, scale: info.map((s) => s.s) }));
       const want = info.reduce((a, s) => a + s.n, 0);

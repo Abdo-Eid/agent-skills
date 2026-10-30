@@ -6,7 +6,7 @@ license: Proprietary; see the repository-root LICENSE.
 
 # DOCX
 
-Read `<skills-root>/artifact-taste/SKILL.md` first: decide what this document should be before you open the kit.
+Read `<skills-root>/artifact-taste/SKILL.md`, then `<skills-root>/artifact-taste/docx.md`, first: decide what this document should be before you open the kit.
 
 Write a CommonJS generator `<project-root>/src/build.cjs` with the kit; run it with `node` and `NODE_PATH` set. The file goes to `<project-root>/out/<name>.docx`. Do not hand-edit OOXML; anything the kit lacks goes through `add(...)` with objects from the `docx` package.
 

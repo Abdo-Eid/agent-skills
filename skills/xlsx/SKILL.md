@@ -5,7 +5,7 @@ description: "Create formula-driven XLSX workbooks (budgets, forecasts, models, 
 
 # XLSX
 
-Read `<skills-root>/artifact-taste/SKILL.md` first: decide how this workbook should be organised (a model, a decision surface, a queue, a ledger, a scenario lab…) before you open the kit. In a workbook the originality is in the information architecture and how a reader moves through it, not in decoration.
+Read `<skills-root>/artifact-taste/SKILL.md`, then `<skills-root>/artifact-taste/xlsx.md`, first: decide how this workbook should be organised (a model, a decision surface, a queue, a ledger, a scenario lab…) before you open the kit. In a workbook the originality is in the information architecture and how a reader moves through it, not in decoration.
 
 New workbooks: a short Python generator against `kit.py` (XlsxWriter underneath); this page covers its API. Never hand-write workbook XML, install packages, or save an uploaded workbook with openpyxl. Use the `<skills-root>` and `<project-root>` paths you were given literally. Generator in `<project-root>/src/`, result in `<project-root>/out/`.
 

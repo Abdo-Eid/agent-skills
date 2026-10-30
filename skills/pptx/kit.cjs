@@ -36,14 +36,67 @@ const lum = (h) => { const [r, g, b] = hex(h).map((v) => { v /= 255; return v <=
 const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const readable = (bg, light, dark) => (contrast(bg, light) >= contrast(bg, dark) ? light : dark);
 
+// ---- stylesheet (shared concept in artifact-taste/SKILL.md, "Styling"): CSS as an object, compiled to PptxGenJS options.
+const SAFE = ['Arial', 'Arial Narrow', 'Times New Roman', 'Courier New', 'Noto Naskh Arabic', 'Noto Sans Arabic'];
+const GENERIC = { serif: 'Times New Roman', 'sans-serif': 'Arial', monospace: 'Courier New' };
+const ELEMENTS = ['body', 'th', 'td', 'chart'];
+const PROPS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'color', 'lineHeight', 'letterSpacing', 'textTransform', 'textAlign', 'verticalAlign',
+  'background', 'padding', 'border', 'borderTop', 'borderBottom', 'borderInlineStart', 'borderInlineEnd', 'borderRadius', 'opacity', 'composes', 'pptx'];
+const NOT_HERE = { display: 'lay boxes out with d.split, d.grid and d.stack', gridTemplateColumns: 'use d.grid(box, [2, 1])', flex: 'use d.split or d.stack', gap: 'pass gap to d.grid, d.split or d.stack',
+  margin: 'place the box with d.split, d.grid or d.inset', width: 'boxes come from d.page, d.split and d.grid', height: 'boxes come from d.page, d.split and d.grid', boxShadow: 'PowerPoint shapes here have no shadow option; use a darker border', backgroundImage: 'place an image with s.addImage' };
+const lev = (a, b) => { const d = Array.from({ length: b.length + 1 }, (_, i) => i); for (let i = 1; i <= a.length; i++) { let p = d[0]; d[0] = i; for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, p + (a[i - 1] === b[j - 1] ? 0 : 1)); p = t; } } return d[b.length]; };
+/** a length in points: 12 | '12pt' | '4mm' | '0.2in' | '16px' | '1.5em' (em needs the font size) */
+const pt = (v, em = 16) => { if (typeof v === 'number') return v; const m = String(v).trim().match(/^(-?[\d.]+)\s*(pt|mm|in|px|em|rem)?$/); if (!m) throw new Error(`style: not a length: ${v}`); const n = +m[1]; return { pt: n, mm: n * 72 / 25.4, in: n * 72, px: n * 0.75, em: n * em, rem: n * em }[m[2] || 'pt']; };
+
 function deck(o = {}) {
-  const rtl = !!o.rtl;
-  if (!o.palette) throw new Error(`choose the colours for this deck: palette (${Object.keys(PALETTES).join(' ')}) or your own {bg surface ink muted accent accent2 rule deep}`);
-  const P = typeof o.palette === 'object' ? { ...PALETTES.coral, ...o.palette } : PALETTES[o.palette];
-  if (!P) throw new Error(`unknown palette ${o.palette}: ${Object.keys(PALETTES).join(' ')}, or pass your own object`);
+  const rtl = !!o.rtl, style = o.style || {};
+  const sv = (k) => (style[`--${k}`] ? String(style[`--${k}`]).replace('#', '').toUpperCase() : undefined);
+  /** a length that may be a variable: '--radius' set in style, used as var(--radius) or radius */
+  const len = (v, em) => {
+    for (let i = 0; i < 4 && typeof v === 'string'; i++) {
+      const m = v.trim().match(/^var\(--([\w-]+)\)$/), k = m ? m[1] : v.trim();
+      if (style[`--${k}`] === undefined) break;
+      v = style[`--${k}`];
+    }
+    return pt(v, em);
+  };
+  if (!o.palette && !style['--accent']) throw new Error(`choose the colours for this deck: style {'--accent': '#…', '--ink', '--bg', …}, or palette (${Object.keys(PALETTES).join(' ')})`);
+  const P0 = typeof o.palette === 'object' ? { ...PALETTES.coral, ...o.palette } : o.palette ? PALETTES[o.palette] : { bg: 'FFFFFF', surface: 'F1F1EE', ink: '1C1C1E', muted: '6B6B70', accent: sv('accent'), accent2: '6B6B70', rule: 'DCDCD8', deep: '1C1C1E' };
+  if (!P0) throw new Error(`unknown palette ${o.palette}: ${Object.keys(PALETTES).join(' ')}, or set --accent in style`);
+  const P = { ...P0 };
+  for (const k of ['bg', 'surface', 'ink', 'muted', 'accent', 'accent2', 'rule', 'deep']) if (sv(k)) P[k] = sv(k);
+  if (sv('accent') && !sv('accentText')) delete P.accentText;
   // rtl: Noto Arabic faces; only a fonts object {head, body, ...} overrides them (a preset name is ignored)
   const fo = typeof o.fonts === 'object' ? o.fonts : null;
   const F = rtl ? { ...FONTS.arabic, ...fo } : { ...FONTS.editorial, ...(fo || FONTS[o.fonts || 'editorial']) };
+  const classes = {}, elements = {}, warned = new Set();
+  const warn = (m) => { if (!warned.has(m)) { warned.add(m); console.log('WARN ' + m); } };
+  for (const [k, v] of Object.entries(style)) {
+    if (k.startsWith('--')) continue;
+    if (k.startsWith('.')) classes[k.slice(1)] = v;
+    else if (ELEMENTS.includes(k)) elements[k] = v;
+    else throw new Error(`style: "${k}" is not a variable (--name), a class (.name) or an element (${ELEMENTS.join(' ')})`);
+  }
+  const check = (props) => Object.keys(props).forEach((k) => {
+    if (PROPS.includes(k)) return;
+    if (NOT_HERE[k]) throw new Error(`style: ${k} is CSS but not something a slide text box can do: ${NOT_HERE[k]}`);
+    throw new Error(`style: unknown property ${k} (did you mean ${PROPS.map((p) => [p, lev(k, p)]).sort((a, b) => a[1] - b[1])[0][0]}?); supported: ${PROPS.join(' ')}`);
+  });
+  Object.values(classes).concat(Object.values(elements)).forEach(check);
+  /** merged props for a class list: body < classes (with composes) < inline */
+  const resolve = (cls, inline = {}) => {
+    const out = { ...(elements.body || {}) };
+    const add = (n, seen) => {
+      n = String(n).replace(/^\./, '');
+      if (!classes[n]) throw new Error(`style: no class .${n}; defined: ${Object.keys(classes).map((x) => '.' + x).join(' ') || '(none)'}`);
+      if (seen.has(n)) throw new Error(`style: class .${n} composes itself`);
+      [].concat(classes[n].composes || []).forEach((c) => add(c, new Set([...seen, n])));
+      Object.assign(out, classes[n]);
+    };
+    [].concat(cls || []).flatMap((c) => String(c).split(/\s+/)).filter(Boolean).forEach((c) => add(c, new Set()));
+    check(inline);
+    return { ...out, ...inline };
+  };
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE';
   pptx.title = o.title || 'Presentation';
@@ -66,8 +119,95 @@ function deck(o = {}) {
   const fit = (str, size, wIn) => Math.max(10, Math.min(size, Math.floor((wIn * 72) / (String(str).length * 0.58))));
   const hb = () => !!F.headBold;
 
+  // ---- compile resolved CSS props to PptxGenJS text options (and the shape/lines a box draws)
+  const colour = (s, v) => {
+    if (v === undefined) return undefined;
+    let x = String(v).trim();
+    const m = x.match(/^var\(--([\w-]+)\)$/); if (m) x = m[1];
+    if (style[`--${x}`] !== undefined) x = String(style[`--${x}`]);
+    else if (s && s.c[x]) return s.c[x];
+    x = x.replace('#', '');
+    if (/^[0-9a-f]{3}$/i.test(x)) x = x.split('').map((c) => c + c).join('');
+    if (!/^[0-9a-f]{6}$/i.test(x)) throw new Error(`style: colour ${v} must be #RRGGBB, a --variable or one of ${Object.keys(s ? s.c : LIGHT).join(' ')}`);
+    return x.toUpperCase();
+  };
+  const face = (v) => {
+    const list = (Array.isArray(v) ? v : String(v).split(',')).map((f) => String(f).trim().replace(/^["']|["']$/g, ''));
+    if (rtl) return list.find((f) => /arabic/i.test(f) && SAFE.includes(f)) || F.body; // right-to-left text needs an Arabic face; Latin faces fall back to the Noto Arabic body
+    const ok = list.map((f) => GENERIC[f] || f).find((f) => SAFE.includes(f) || Object.values(F).includes(f));
+    if (!ok) throw new Error(`style: none of ${list.join(', ')} is a font every PowerPoint and LibreOffice has; end the list with one of ${SAFE.join(', ')} or serif / sans-serif / monospace`);
+    return ok;
+  };
+  // border shorthand '2pt solid accent' | 'var(--line) ink': the first token that is a length is the width, the first other one the colour
+  const isLen = (t) => { try { len(t); return true; } catch { return false; } };
+  const stroke = (s, v) => { const m = String(v).trim().split(/\s+/).filter((t) => !/^(solid|dashed|dotted)$/.test(t)); const w = m.find(isLen); return { width: w ? len(w) : 1, color: colour(s, m.find((t) => t !== w) || 'rule') }; };
+  const compile = (s, c) => {
+    const size = c.fontSize !== undefined ? len(c.fontSize) : S.body, opt = {};
+    if (c.fontSize !== undefined) opt.fontSize = size;
+    if (size < 12) warn(`fontSize ${size}pt is below the 12pt reading floor for slides`);
+    if (c.fontFamily) opt.fontFace = face(c.fontFamily);
+    if (c.fontWeight !== undefined) opt.bold = c.fontWeight === 'bold' || +c.fontWeight >= 600;
+    if (c.fontStyle) opt.italic = c.fontStyle === 'italic';
+    if (c.color) opt.color = colour(s, c.color);
+    if (c.lineHeight) opt.lineSpacingMultiple = +c.lineHeight;
+    if (c.letterSpacing !== undefined) { if (rtl) warn('letterSpacing ignored in right-to-left text (it breaks letter joining)'); else opt.charSpacing = len(c.letterSpacing, size); }
+    if (c.textAlign) opt.align = { start: flip('left'), end: flip('right'), left: 'left', right: 'right', center: 'center' }[c.textAlign];
+    if (c.verticalAlign) opt.valign = c.verticalAlign === 'middle' ? 'middle' : c.verticalAlign;
+    if (c.padding !== undefined) opt.margin = len(String(c.padding).split(/\s+/)[0], size);
+    if (c.opacity !== undefined) opt.transparency = Math.round((1 - c.opacity) * 100);
+    return { ...opt, ...(c.pptx || {}) };
+  };
+  const caseOf = (c, str) => (rtl || typeof str !== 'string' ? str : c.textTransform === 'uppercase' ? str.toUpperCase() : c.textTransform === 'lowercase' ? str.toLowerCase() : c.textTransform === 'capitalize' ? str.replace(/\b\w/g, (x) => x.toUpperCase()) : str);
+  /** background, border, radius and per-side borders of a box; returns the inside box after padding */
+  function paint(s, c, b) {
+    const fill = c.background ? colour(s, c.background) : null, ln = c.border ? stroke(s, c.border) : null;
+    if (fill || ln) {
+      const r = c.borderRadius !== undefined ? len(c.borderRadius) / 72 : 0;
+      s.addShape(r ? 'roundRect' : 'rect', { x: X(b.x, b.w), y: b.y, w: b.w, h: b.h, ...(r ? { rectRadius: r } : {}), fill: fill ? { color: fill } : { type: 'none' }, line: ln ? { color: ln.color, width: ln.width } : { type: 'none' } });
+    }
+    const side = (key, x, y, w, h) => { if (!c[key]) return; const l = stroke(s, c[key]); s.addShape('line', { x: X(x, w), y, w, h, line: { color: l.color, width: l.width } }); };
+    side('borderTop', b.x, b.y, b.w, 0); side('borderBottom', b.x, b.y + b.h, b.w, 0);
+    side('borderInlineStart', b.x, b.y, 0, b.h); side('borderInlineEnd', b.x + b.w, b.y, 0, b.h);
+    const p = c.padding !== undefined ? String(c.padding).split(/\s+/).map((v) => len(v) / 72) : [0];
+    const [t, r2 = t, bo = t, l = r2] = p;
+    return { x: b.x + l, y: b.y + t, w: b.w - l - r2, h: b.h - t - bo };
+  }
+  const split4 = (a) => { const { x, y, w, h, ...rest } = a || {}; return [{ x, y, w, h }, rest]; };
+  if (elements.body && elements.body.fontFamily) F.body = face(elements.body.fontFamily); // footer, timeline and table text follow the body font
+
   // ---- low level (all mirror-aware, colors default from the slide's theme s.c) ----
-  function text(s, str, a = {}) {
+  /** styled text: d.text(s, str, cls, {x, y, w, h, ...inline CSS}). An object in the cls slot is the box plus inline CSS. */
+  function stext(s, str, cls, at) {
+    if (cls && typeof cls === 'object' && !Array.isArray(cls)) { at = cls; cls = ''; }
+    const [b, inline] = split4(at);
+    if ([b.x, b.y, b.w, b.h].some((v) => typeof v !== 'number')) throw new Error('text needs a box {x, y, w, h} in inches (from d.page, d.split, d.grid, d.stack)');
+    const c = resolve(cls, inline);
+    const inner = c.background || c.border || c.borderTop || c.borderBottom || c.borderInlineStart || c.borderInlineEnd ? paint(s, { ...c, padding: undefined }, b) : b;
+    const { align, ...opt } = compile(s, c);
+    const size = opt.fontSize || S.body, ground = c.background ? colour(s, c.background) : s.c.bg, ink = opt.color || s.c.ink;
+    if (size < 18 && contrast(ink, ground) < 4.5) warn(`text "${String(str).slice(0, 24)}" (${size}pt, #${ink} on #${ground}) has contrast ${contrast(ink, ground).toFixed(1)}:1, under 4.5:1 for small text`);
+    raw(s, caseOf(c, str), { ...inner, ...opt, align: align ? (align === flip('left') ? 'start' : align === flip('right') ? 'end' : align) : 'start' });
+  }
+  /** a region from a class: background, border, borderRadius, per-side borders, padding. Returns the inside box for its content. */
+  function box(s, cls, at) {
+    if (cls && typeof cls === 'object' && !Array.isArray(cls)) { at = cls; cls = ''; }
+    const [b, inline] = split4(at);
+    return paint(s, resolve(cls, inline), b);
+  }
+  /** stack text items top to bottom inside a box: items [[str, cls, inline?], …]; heights come from each class's size. Returns the space left below. */
+  function stack(s, b, items, gap = 0.15) {
+    const g = typeof gap === 'number' ? gap : len(gap) / 72;
+    let y = b.y;
+    for (const [str, cls, inline = {}] of items) {
+      const c = resolve(cls, inline), size = c.fontSize !== undefined ? len(c.fontSize) : S.body;
+      const bold = c.fontWeight === 'bold' || +c.fontWeight >= 600, pad = c.padding !== undefined ? (2 * len(String(c.padding).split(/\s+/)[0], size)) / 72 : 0;
+      const h = th(caseOf(c, str), size, b.w - pad, bold) * (c.lineHeight ? +c.lineHeight / 1.2 : 1) + pad + 0.04;
+      stext(s, str, cls, { x: b.x, y, w: b.w, h, ...inline });
+      y += h + g;
+    }
+    return { x: b.x, y, w: b.w, h: Math.max(0, b.y + b.h - y) };
+  }
+  function raw(s, str, a = {}) {
     const { x, y, w, h, font = 'body', align = 'start', ...r } = a;
     const al = align === 'start' ? flip('left') : align === 'end' ? flip('right') : align;
     if (rtl && typeof str === 'string') str = str.replace(/(\d)\s*°/g, '$1‏°'); // RLM: the degree sign stays on the far side of its number, as in Arabic typesetting
@@ -90,17 +230,23 @@ function deck(o = {}) {
     s.c = a.dark && !P.dark ? DARK : LIGHT;
     s.background = { color: a.bg || s.c.bg };
     const note = a.note !== undefined ? a.note : a.cover ? null : o.footer;
-    if (note) { rule(s, M, 6.82, W - 2 * M, s.c.rule); text(s, note, { x: M, y: 6.95, w: 9.5, h: 0.3, fontSize: 11, color: s.c.muted }); }
+    if (note) { rule(s, M, 6.82, W - 2 * M, s.c.rule); raw(s, note, { x: M, y: 6.95, w: 9.5, h: 0.3, fontSize: 11, color: s.c.muted }); }
     if (a.num !== undefined ? a.num : !a.cover) s.slideNumber = { x: X(W - M - 1.2, 1.2), y: 6.95, w: 1.2, h: 0.3, fontFace: F.body, fontSize: 11, color: s.c.muted, align: flip('right'), margin: 0 };
     return s;
   }
   // one big number + label, filling its box; the value shrinks to stay on one line
   function stat(s, a) {
+    if (a.cls || a.labelCls) { // styled: the value in `cls` (its fontSize is the most it may grow to), the label in `labelCls`
+      const c = resolve(a.cls || []), vs = fit(a.value, c.fontSize !== undefined ? len(c.fontSize) : S.stat, a.w), vh = (vs * 1.15) / 72;
+      stext(s, String(a.value), a.cls || [], { x: a.x, y: a.y, w: a.w, h: vh, fontSize: vs, verticalAlign: 'bottom' });
+      stext(s, a.label, a.labelCls || [], { x: a.x, y: a.y + vh + 0.08, w: a.w, h: Math.max(0.4, (a.h || 1.5) - vh - 0.08) });
+      return;
+    }
     const { x, y, w, h = 1.5, value, label, size = S.stat, color, muted, align = 'start' } = a;
     const sz = fit(value, size, w), vh = (sz * 1.15) / 72, ls = sz >= 48 ? 18 : S.body;
     const dy = a.center ? Math.max(0, (h - vh - 0.08 - th(label, ls, w)) * 0.4) : 0; // centre the group in a tall cell
-    text(s, value, { x, y: y + dy, w, h: vh, font: 'stat', fontSize: sz, color: color || s.c.ink, align, valign: 'bottom', ...(hb() ? { bold: true } : {}) });
-    text(s, label, { x, y: y + dy + vh + 0.08, w, h: Math.max(0.4, h - dy - vh - 0.08), fontSize: ls, color: muted || s.c.muted, align });
+    raw(s, value, { x, y: y + dy, w, h: vh, font: 'stat', fontSize: sz, color: color || s.c.ink, align, valign: 'bottom', ...(hb() ? { bold: true } : {}) });
+    raw(s, label, { x, y: y + dy + vh + 0.08, w, h: Math.max(0.4, h - dy - vh - 0.08), fontSize: ls, color: muted || s.c.muted, align });
   }
   function panel(s, a) {
     const { x, y, w, h, fill = s.c.surface, bar } = a;
@@ -117,8 +263,11 @@ function deck(o = {}) {
     const base = { fontFace: F.body, fontSize: size, color: s.c.ink, valign: 'middle', align: flip('left'), margin: [0, 0.1, 0, 0.1], ...(rtl ? { rtlMode: true, lang: 'ar-SA' } : {}) };
     const line = (c, pt) => [{ type: 'none' }, { type: 'none' }, { pt, color: c }, { type: 'none' }];
     const edge = (i, n) => (i === (rtl ? n - 1 : 0) ? { margin: rtl ? [0, 0, 0, 0.1] : [0, 0.1, 0, 0] } : {});
-    const out = [rv(hd).map((t, i, arr) => ({ text: rtl ? t : t.toUpperCase(), options: { ...base, fontSize: S.small, bold: true, color: s.c.muted, border: line(s.c.ink, 1.5), ...edge(i, arr.length) } }))];
-    rows.forEach((r) => out.push(rv(r).map((t, i, arr) => ({ text: t, options: { ...base, border: line(s.c.rule, 0.75), ...edge(i, arr.length), ...(i === (rtl ? arr.length - 1 : 0) ? { fontFace: F.head, fontSize: S.h2 - 2, bold: !!F.headBold } : {}) } }))));
+    // th / td element styles: their text props, background as the cell fill, borderBottom as the row rule
+    const el = (k) => { const c = elements[k] || {}; const { align: al, margin, transparency, ...t } = compile(s, c); return { t: { ...t, ...(al ? { align: al } : {}), ...(c.background ? { fill: { color: colour(s, c.background) } } : {}) }, b: c.borderBottom ? stroke(s, c.borderBottom) : null, up: c.textTransform }; };
+    const TH = el('th'), TD = el('td');
+    const out = [rv(hd).map((t, i, arr) => ({ text: rtl || (TH.up && TH.up !== 'uppercase') ? t : t.toUpperCase(), options: { ...base, fontSize: S.small, bold: true, color: s.c.muted, border: TH.b ? line(TH.b.color, TH.b.width) : line(s.c.ink, 1.5), ...edge(i, arr.length), ...TH.t } }))];
+    rows.forEach((r) => out.push(rv(r).map((t, i, arr) => ({ text: t, options: { ...base, border: TD.b ? line(TD.b.color, TD.b.width) : line(s.c.rule, 0.75), ...edge(i, arr.length), ...(i === (rtl ? arr.length - 1 : 0) && !elements.td ? { fontFace: F.head, fontSize: S.h2 - 2, bold: !!F.headBold } : {}), ...TD.t } }))));
     s.addTable(out, { x: X(x, w), y, w, colW, rowH: [hh, ...rows.map(() => rh)] });
   }
   // items: [{date, label, detail?, at?}] (at = 0..1 position, default evenly spaced). dir 'h' | 'v'.
@@ -131,9 +280,9 @@ function deck(o = {}) {
       items.forEach((it, i) => {
         const cy = y + i * ch;
         rect(s, { x: x, y: cy + 0.03, w: dot, h: dot, fill: s.c.accent, shape: 'ellipse', line: s.c.bg, lw: 2 });
-        text(s, it.date, { x: x + 0.7, y: cy, w: 2.8, h: 0.5, font: 'head', fontSize: 26 });
-        text(s, it.label, { x: x + 3.7, y: cy + 0.02, w: w - 3.7, h: 0.45, fontSize: 20, bold: true });
-        if (it.detail) text(s, it.detail, { x: x + 3.7, y: cy + 0.5, w: w - 3.7, h: ch - 0.55, color: s.c.muted });
+        raw(s, it.date, { x: x + 0.7, y: cy, w: 2.8, h: 0.5, font: 'head', fontSize: 26 });
+        raw(s, it.label, { x: x + 3.7, y: cy + 0.02, w: w - 3.7, h: 0.45, fontSize: 20, bold: true });
+        if (it.detail) raw(s, it.detail, { x: x + 3.7, y: cy + 0.5, w: w - 3.7, h: ch - 0.55, color: s.c.muted });
       });
       return;
     }
@@ -141,13 +290,13 @@ function deck(o = {}) {
     if (n === 2) {
       const m = 0.7, bh = span ? 0.5 : 0.16, bw = Math.min(5.4, w / 2 - 0.2);
       rect(s, { x: x + m / 2, y: ly - bh / 2, w: w - m, h: bh, fill: s.c.accent });
-      if (span) text(s, span, { x: x + m, y: ly - bh / 2, w: w - 2 * m, h: bh, fontSize: 18, bold: true, color: s.c.onAccent, align: 'center', valign: 'middle' });
+      if (span) raw(s, span, { x: x + m, y: ly - bh / 2, w: w - 2 * m, h: bh, fontSize: 18, bold: true, color: s.c.onAccent, align: 'center', valign: 'middle' });
       items.forEach((it, i) => {
         const al = i ? 'end' : 'start', bx = i ? x + w - bw : x;
         rect(s, { x: i ? x + w - m : x, y: ly - m / 2, w: m, h: m, fill: s.c.accent, shape: 'ellipse', line: s.c.bg, lw: 3 });
-        text(s, it.date, { x: bx, y: ly + 0.6, w: bw, h: 0.6, font: 'head', fontSize: 30, align: al });
-        text(s, it.label, { x: bx, y: ly + 1.25, w: bw, h: 0.4, fontSize: 20, bold: true, align: al });
-        if (it.detail) text(s, it.detail, { x: bx, y: ly + 1.75, w: bw, h: Math.max(0.5, h - 2.1), fontSize: 18, color: s.c.muted, align: al });
+        raw(s, it.date, { x: bx, y: ly + 0.6, w: bw, h: 0.6, font: 'head', fontSize: 30, align: al });
+        raw(s, it.label, { x: bx, y: ly + 1.25, w: bw, h: 0.4, fontSize: 20, bold: true, align: al });
+        if (it.detail) raw(s, it.detail, { x: bx, y: ly + 1.75, w: bw, h: Math.max(0.5, h - 2.1), fontSize: 18, color: s.c.muted, align: al });
       });
       return;
     }
@@ -161,9 +310,9 @@ function deck(o = {}) {
       const edge = at < 0.02 ? 'start' : at > 0.98 ? 'end' : 'center';
       const bxx = edge === 'start' ? x : edge === 'end' ? x + w - bw : bx;
       rect(s, { x: cx - dot / 2, y: ly - dot / 2, w: dot, h: dot, fill: s.c.accent, shape: 'ellipse', line: s.c.bg, lw: 2 });
-      text(s, it.date, { x: bxx, y: ly + 0.45, w: bw, h: 0.55, font: 'head', fontSize: 26, align: edge });
-      text(s, it.label, { x: bxx, y: ly + 1.05, w: bw, h: 0.4, fontSize: 18, bold: true, align: edge });
-      if (it.detail) text(s, it.detail, { x: bxx, y: ly + 1.5, w: bw, h: Math.max(0.5, h - 1.8), color: s.c.muted, align: edge });
+      raw(s, it.date, { x: bxx, y: ly + 0.45, w: bw, h: 0.55, font: 'head', fontSize: 26, align: edge });
+      raw(s, it.label, { x: bxx, y: ly + 1.05, w: bw, h: 0.4, fontSize: 18, bold: true, align: edge });
+      if (it.detail) raw(s, it.detail, { x: bxx, y: ly + 1.5, w: bw, h: Math.max(0.5, h - 1.8), color: s.c.muted, align: edge });
     });
   }
   // native bar chart. dir 'bar' (horizontal, first label on top) | 'col'. fmt = Excel format: '$#,##0', '0%' (values as fractions), '#,##0.0'.
@@ -172,15 +321,18 @@ function deck(o = {}) {
   function bars(s, a) {
     let { x, y, w, h, labels, values, series, dir = 'bar', fmt = '#,##0', max, hi, colors, name = 'Series', size = 14 } = a;
     const flipCols = rtl && dir === 'col', rv = (arr) => (flipCols ? [...arr].reverse() : arr);
+    if (typeof hi === 'string') { const i = labels.indexOf(hi); if (i < 0) throw new Error(`bars: hi "${hi}" is not one of the labels (${labels.join(", ")}); pass a label or a 0-based index`); hi = i; }
     labels = rv(labels);
     if (values) { values = rv(values); if (flipCols && hi !== undefined) hi = values.length - 1 - hi; }
     const ser = (series || [{ name, values }]).map((q) => ({ name: q.name, labels, values: series ? rv(q.values) : q.values }));
     const top = Math.max(...ser.flatMap((q) => q.values));
+    const ce = elements.chart ? compile(s, elements.chart) : {}; // chart element: label font, size and colour
+    const cf = ce.fontFace || F.body, cz = ce.fontSize || size, ck = ce.color || s.c.ink;
     const cc = colors || (ser.length > 1 ? [s.c.accent, s.c.accent2, s.c.muted] : hi !== undefined ? values.map((_, i) => (i === hi ? s.c.accent : mix(s.c.bg, s.c.muted, 0.45))) : [s.c.accent]);
     s.addChart(pptx.charts.BAR, ser, {
       x: X(x, w), y, w, h, barDir: dir, chartColors: cc, barGapWidthPct: 55,
-      showValue: true, dataLabelFormatCode: fmt, dataLabelPosition: 'outEnd', dataLabelFontFace: F.body, dataLabelFontSize: size, dataLabelColor: s.c.ink,
-      catAxisLabelFontFace: F.body, catAxisLabelFontSize: size, catAxisLabelColor: s.c.ink, catAxisLineShow: false,
+      showValue: true, dataLabelFormatCode: fmt, dataLabelPosition: 'outEnd', dataLabelFontFace: cf, dataLabelFontSize: cz, dataLabelColor: ck,
+      catAxisLabelFontFace: cf, catAxisLabelFontSize: cz, catAxisLabelColor: ck, catAxisLineShow: false,
       ...(dir === 'bar' ? { catAxisOrientation: 'maxMin', ...(rtl ? { valAxisOrientation: 'maxMin' } : {}) } : {}),
       valAxisHidden: true, valAxisMinVal: 0, valAxisMaxVal: max || top * 1.18, catGridLine: { style: 'none' }, valGridLine: { style: 'none' },
       showLegend: ser.length > 1, legendPos: 'b', legendFontFace: F.body, legendFontSize: 12, legendColor: s.c.ink,
@@ -204,7 +356,7 @@ function deck(o = {}) {
 
   return {
     pptx, T: { ...LIGHT, fonts: F, S, W, H, M }, rtl, X, mix, fit, page, inset, split, grid,
-    slide, text, rect, rule, stat, panel, table, timeline, bars,
+    slide, text: stext, box, stack, rect, rule, stat, panel, table, timeline, bars,
     save: async (file) => {
       require('fs').mkdirSync(require('path').dirname(file), { recursive: true });
       await pptx.writeFile({ fileName: file });
