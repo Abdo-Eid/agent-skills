@@ -10,13 +10,11 @@ Fonts shipped with the skill pack so documents do not depend on whatever the mac
 | `Tajawal` | Light, compact sans | Dense tables and small text |
 | `NotoNaskhArabic` | Traditional Naskh | Long formal body text |
 | `Amiri` | Classical book style | Quotations, titles, heritage or literary tone |
-| `InstrumentSerif` | Condensed editorial display serif, Latin only, Regular weight only | Large titles and section headings in Latin documents (the PDF kit's Latin heading face unless you choose another); never set it bold or small |
+| `InstrumentSerif` | Condensed editorial display serif, Latin only, Regular weight only | Large titles and section headings in Latin documents; never set it bold or small |
 
 ## Using them
 
-- **HTML to PDF (Chromium).** Load by file URL and set direction and language; Chromium joins and orders Arabic itself.
-  `@font-face { font-family: "Rubik"; font-weight: 400; src: url("file:///<skills-root>/fonts/Rubik/Rubik-Regular.ttf"); }`
-  with `<html lang="ar" dir="rtl">`. Declare one `@font-face` per weight.
+- **PDF.** `pdf/build.cjs` loads every family here, so name one in any `font-family` without writing `@font-face`, and set `<html lang="ar" dir="rtl">` for Arabic. Chromium joins and orders Arabic itself.
 - **PPTX, DOCX, XLSX.** These formats store only the font name. The font must be installed where the file is opened or rendered; this pack does not install fonts. Use a family from this folder only if it is installed on the machines that open or render the file; otherwise prefer a font the readers already have.
 
 ## Coverage notes

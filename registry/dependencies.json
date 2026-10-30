@@ -62,7 +62,7 @@
       "python": [
         { "name": "pypdf", "version": "6.15.0", "purpose": "page count and page fill in the check" }
       ],
-      "system": ["libreoffice-core", "libreoffice-writer"]
+      "system": ["poppler-utils", "libreoffice-core", "libreoffice-writer"]
     }
   }
 }

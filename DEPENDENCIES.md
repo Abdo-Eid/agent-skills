@@ -35,8 +35,8 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 | Node.js 22 | PDF, PPTX, DOCX | JavaScript generators |
 | `zip`, `unzip` | All Office formats | Package inspection and source bundling |
 | LibreOffice Core, Writer, Calc, Impress | PPTX, XLSX, DOCX, artifact-taste preview | Headless compatibility, recalculation, and conversion to PDF for page previews |
-| `poppler-utils` | PDF, artifact-taste preview | `pdftotext` for the Arabic text check; `pdftoppm` renders page images |
-| Chromium headless shell | PDF HTML route | Browser rendering |
+| `poppler-utils` | PDF, DOCX, artifact-taste preview | `pdftotext` for the Arabic text check and the DOCX contents page numbers; `pdftoppm` renders page images |
+| Chromium headless shell | PDF | Browser rendering |
 | DejaVu, Liberation, Noto, Noto CJK, Noto Color Emoji fonts | All visual formats | Predictable multilingual rendering and fallbacks |
 
 ## PDF
@@ -50,13 +50,13 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 | Python | `matplotlib` | 3.11.1 | Optional: chart images until DOCX has an SVG chart recipe (PDF charts are inline SVG) | PSF-compatible |
 | Node | `playwright` | 1.62.1 | HTML/CSS-to-PDF: the single PDF route for every language | Apache-2.0 |
 
-ReportLab is no longer used: `html.cjs` replaced it, including for Latin documents.
+ReportLab is no longer used, including for Latin documents. Documents are plain HTML and CSS printed by `build.cjs`.
 
 ### QA
 
 - `poppler-utils` (`pdftotext` for the Arabic text check)
-- Chromium headless shell for the HTML route
-- Shared fonts, plus the Arabic-capable fonts shipped in `skills/fonts/`, which the HTML route loads by file URL
+- Chromium headless shell
+- Shared fonts, plus the Arabic-capable fonts shipped in `skills/fonts/`, which the build loads by file URL
 
 ## PPTX
 
@@ -100,7 +100,8 @@ ReportLab is no longer used: `html.cjs` replaced it, including for Latin documen
 
 ### QA
 
-- LibreOffice Writer
+- LibreOffice Writer, which the kit also runs at save to work out contents page numbers
+- `poppler-utils` (`pdftotext` for those page numbers)
 - Shared fonts
 
 ## Reference Installation

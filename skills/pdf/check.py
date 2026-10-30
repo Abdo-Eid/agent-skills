@@ -25,6 +25,7 @@ if a.pages and n != a.pages: bad.append(f'expected {a.pages} pages, got {n}')
 shipped = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'fonts')
 families = [d.lower() for d in os.listdir(shipped) if os.path.isdir(os.path.join(shipped, d))] if os.path.isdir(shipped) else []
 flat = lambda s: re.sub(r'[^a-z0-9]', '', s.lower())
+MARGIN = 24 * 72 / 25.4  # the build's top and bottom margin, in points
 
 
 def arabic_in_tounicode(font):
@@ -47,9 +48,10 @@ for i, pg in enumerate(r.pages, 1):
     h = float(pg.mediabox.height)
     body = [y for y in ys if 60 < y < h - 40]  # ignore header/footer text
     low = min(body) if body else None
-    used = f'{1 - low / h:.0%} of page height reached' if low else 'no body text'
+    reach = min(1, (h - low - MARGIN) / (h - 2 * MARGIN)) if low else 0  # share of the page's content area, top margin to footer
+    used = f'text reaches {reach:.0%} of the content height' if low else 'no body text'
     print(f'page {i}: {len(t)} chars, {used}')
-    if low is None or ((1 - low / h) < .6 and (i < n or n <= 3)): print(f'WARN (not a failure): page {i} looks mostly empty; add real content or let the build fill it')
+    if low is None or (reach < .55 and (i < n or n <= 3)): print(f'WARN (not a failure): page {i} looks mostly empty; add real content, make what is there larger, or use fewer pages. Do not stretch boxes to fill it')
     for f in (pg.get('/Resources') or {}).get('/Font', {}).values():
         f = f.get_object(); name = re.sub(r'^[A-Z]{6}\+', '', str(f.get('/BaseFont')).lstrip('/'))
         fonts.add(name)
@@ -72,7 +74,7 @@ if n_ar or a.rtl or any(AR.search(e) for e in a.expect):
     words = [w for w in full.split() if AR.search(w)]
     print(f'arabic ({how}): {n_ar} letters, {len(words)} words, fonts used for Arabic={sorted(ar_fonts)}, raw presentation-form code points={len(FORMS.findall(raw))}')
     if not n_ar: bad.append('no selectable Arabic text in the PDF (outlined, rasterised or drawn with a font that has no Arabic map)')
-    elif 'reportlab' in str((r.metadata or {}).get('/Producer', '')).lower(): bad.append('made with ReportLab, which cannot join or reorder Arabic: build it with html.cjs instead')
+    elif 'reportlab' in str((r.metadata or {}).get('/Producer', '')).lower(): bad.append('made with ReportLab, which cannot join or reorder Arabic: build it with build.cjs instead')
     else:
         outside = [f for f in ar_fonts if not any(flat(f).startswith(fam) for fam in families)]
         if families and outside: bad.append(f'Arabic set in {outside}, not a shipped Arabic font: the @font-face did not load (check the file URL) or the font fell back')
@@ -84,6 +86,6 @@ for e in a.expect:
         if re.sub(r'\s+', '', ce) in flat_full: continue
         for w in ce.split():
             if w not in flat_full: bad.append(f'missing Arabic word {w!r} from {e!r}' + (' (found reversed)' if w[::-1] in flat_full else ''))
-    elif e not in full: bad.append(f'missing text: {e!r}')
+    elif ' '.join(e.split()).casefold() not in ' '.join(full.split()).casefold(): bad.append(f'missing text: {e!r}')  # casefold: CSS uppercase changes the text in the PDF
 if a.text: print('---\n' + full)
 print('FAIL: ' + '; '.join(bad) if bad else 'OK'); sys.exit(1 if bad else 0)

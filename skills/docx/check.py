@@ -56,7 +56,7 @@ def fit(cmd, n):
         if pages == n and .78 <= fills[-1] <= .87: break
     good = [o for o in ok if .78 <= o[1] <= .87]
     if not ok:
-        bad.append(f'--fit could not reach {n} pages (spread .7 to 1.8): ' + ('add real content (a table, a callout), not blank lines' if hist[-1][1] < goal else 'cut content'))
+        bad.append(f'--fit could not reach {n} pages (spread .7 to 1.8): ' + ('add real content, not blank lines' if hist[-1][1] < goal else 'cut content'))
         build(1.0)                                    # leave the file built at the default spread
         return
     s, f = (good or [max(ok, key=lambda o: o[1])])[-1]

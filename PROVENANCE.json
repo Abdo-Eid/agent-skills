@@ -21,7 +21,7 @@
     {
       "path": "skills/pdf",
       "origin": "First-party synthesis",
-      "evidence": "Historical PDF behavior at agent-skills commit c9e162420a55ea8c2a6bde07a850a2d6604c02ed and official Playwright and pypdf documentation; the HTML kit replaced the earlier ReportLab kit",
+      "evidence": "Historical PDF behavior at agent-skills commit c9e162420a55ea8c2a6bde07a850a2d6604c02ed and official Playwright and pypdf documentation; the HTML kit replaced the earlier ReportLab kit, and printing the author's own HTML file with build.cjs then replaced the kit",
       "license": "LicenseRef-Proprietary"
     },
     {

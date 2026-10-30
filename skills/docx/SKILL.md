@@ -1,6 +1,6 @@
 ---
 name: docx
-description: Create editable Word documents with the docx package through a small kit that handles the mechanics (real styles, header-row tables, page X of Y footer, RTL) while you own the structure, and check them in one call.
+description: Create editable Word documents, from memos to theses and books, with the docx package through a small kit: a CSS-like stylesheet compiled to real Word styles, native heading numbering, footnotes, equations from TeX, numbered captions and cross-references, sections with their own page numbering, a contents page, and RTL. Check them in one call.
 license: Proprietary; see the repository-root LICENSE.
 ---
 
@@ -12,22 +12,40 @@ Write a CommonJS generator `<project-root>/src/build.cjs` with the kit; run it w
 
 ```js
 // Direction: <subject material, chosen structure, why>
+// Dials: <the line of the look you picked from dials.py, with why>
 const K = require('<skills-root>/docx/kit.cjs');
-const D = require('docx');            // for your own paragraphs, tables, images
 (async () => {                        // CommonJS has no top-level await
-  const d = K.doc({ theme: '<chosen>' /* or tokens: {...} */, page: 'A4', title: '...', footer: '...' });
-  // your structure: kit calls and d.add(new D.Paragraph(...), ...) in the order your direction needs
+  const d = K.doc({ style: { /* your stylesheet */ }, page: 'A4', title: '...', footer: '...' });
+  // your structure: kit calls in the order your direction needs
   await d.save('<project-root>/out/x.docx');
 })();
 ```
 
-## Kit API (all methods chain)
+## Style
 
-- `K.doc(opts)`: **colours are required**: `theme` `navy | forest | clay | slate` or `tokens` (`accent`, `ink`, `muted`, `tint`, `line`, `head` and `body` fonts, `th: 'solid' | 'tint' | 'rule'` table header, `rule: true|false` line under the title and h1). `page` `A4 | Letter`; `numberH1: true` numbers h1 ("1. "; `h1(text, false)` skips one; never type numbers yourself); `rtl: true` (bidi, mirrored tables, Arabic footer); `spread`, `density`, `margin`, `size`, `author`.
-- Text: `title subtitle kicker h1 h2 h3 p small gap pageBreak tabline(left, right)`; inline `**bold**` `*italic*`. Headings stay with the next block, a short `p`/`small` before a table stays with it, tables stay whole with their caption.
-- Blocks: `table({head, rows, widths (relative), align:'lrr', total, caption, zebra})`; `callout(text, title)`; `bullets([..])`; `numbered([..])`.
-- Your own content: `add(...docxObjects)` takes any `docx` objects (paragraphs with your own runs and spacing, tables, `ImageRun` images with explicit size, columns, text frames). Helpers: `d.W` text width in twips, `d.t` the colour and font tokens, `d.para(text, paragraphOpts, runOpts)`, `d.runs(text)`. From eight pages add `add(new D.TableOfContents('Contents', { hyperlink: true, headingStyleRange: '1-2' }))`.
-- Footer "Page X of Y" is automatic. Fonts: Arial and Times New Roman only (other fonts are substituted wherever they are not installed).
+`style` is CSS as an object (see artifact-taste), compiled to **real Word styles**: each `.class` appears in Word's style gallery and `composes` becomes `basedOn`, so the file stays editable. Paragraphs take one class; on a heading, title, subtitle or small a class adds to that element's style, on `p` it is the paragraph's style.
+
+- Variables: `--accent --ink --muted --tint --line` set the kit's colours; `--accent` is required (or `theme`: `navy forest clay slate`, a starting set). Your own variables work in any value.
+- Elements: `body title subtitle h1 h2 h3 caption footnote th td header footer contentsTitle toc1 toc2 toc3`. Headings follow `body`'s `fontFamily` until you set theirs; `footer`/`header` style the running lines (a monospace page number goes here).
+- Properties: `fontFamily fontSize fontWeight fontStyle fontVariant color lineHeight letterSpacing textTransform textDecoration textAlign textIndent background padding border borderTop borderBottom borderInlineStart borderInlineEnd marginTop marginBottom marginInlineStart marginInlineEnd breakBefore breakAfter breakInside`, plus `docx: {run, paragraph}` for raw options. `breakBefore: 'page'` on `h1` starts each chapter on a new page; a negative `textIndent` with an equal `marginInlineStart` is a hanging indent; `borderTop: 'none'` on `footer` removes its rule; `lineHeight` is Word's line spacing, not CSS's: `1` is single, which already has air, so book text sits near `1.1` to `1.25` and `1.45` looks nearly double; `letterSpacing` also takes `em`; `textIndent` on `body` indents running text only (headings, tables, captions and lists stay flush), and a class with `textIndent: 0` makes a flush first paragraph. Anything else stops the build and says why.
+- Fonts: any name works, and the first on the list is the one used, since a Word file stores one name. Arial, Arial Narrow, Times New Roman, Courier New, Tahoma, Sakkal Majalla, Traditional Arabic, Simplified Arabic, Noto Naskh Arabic and Noto Sans Arabic are safe; another name builds with a warning, because Word and LibreOffice substitute it on a machine without it, which moves the layout. Use one when the reader has it. For Arabic, the first face on the list that carries it is used for the Arabic text too: Arial and Tahoma read modern, Sakkal Majalla, Traditional Arabic and Simplified Arabic read like print.
+
+## Kit API
+
+- `K.doc(opts)`: `style`, `page` `A4 | Letter | A5 | B5` or a trim `['6in', '9in']`, `margin` (one length, or `{top, bottom, left | inside, right | outside}`), `rtl: true`, `title`, `author`, `footer`, `header`, `headerEven` (different header on even pages), `pageLabel`, `hyphenate: true` (Word hyphenates, for justified text on a narrow page), `spread`, `density`.
+  - Numbering is off until you ask: `numberHeadings: true` (native 1, 1.1, 1.1.1; never type numbers, also not "Chapter 3"), `chapterStart: 3` (a chapter that is not the first), `chapterLabel: 'Chapter'` or `'Chapter %1:'` (the word in the number), `chapterNumbers: true` (captions and equations as 3.2 and (3.2), restarting per chapter; without it they count through the whole document).
+  - Binding: `gutter: '12mm'` (extra margin for the binding), `mirror: true` (the gutter goes on the inside of each page, and running heads and page numbers on the outside).
+- Text: `d.p(text, 'cls', {inline css})`, class and inline both optional; the same for `title subtitle small`. Headings `d.h1(text, 'cls', {inline css, number: false, label: 'x'})`, or `d.h1(text, {label: 'x'})` without a class; also `h2 h3`. Inline markup `**bold**` `*italic*`. Also `bullets([..], cls) numbered([..], cls) gap() pageBreak() tabline(left, right)`. Headings stay with the next block. Every call returns `d`, so calls chain.
+- `table({head, rows, widths (relative), align:'lrr', total, caption, label, zebra})`: the header row repeats and the caption, above the table, is numbered.
+- `figure(file, {width: '120mm', height, caption, label})`: png or jpg with a numbered caption below; height comes from the image.
+- `eq('\\frac{a}{b} = \\sum_{i=1}^{n} x_i^2', {label, number})`: a display equation from TeX, real Word math; numbered at the right when `label` or `number: true` is given. Supported: `\frac \sqrt[n] \sum \int \lim_{..} ^ _ \text{words}` (upright, keeps its spaces), `\sin`-style function names (upright), `\quad`, Greek letters and common operators; an unknown command stops the build and lists them, and anything else can be built from `K.D` math objects. As in TeX, `^` and `_` apply to the one thing before them, so group with braces: `{(1+h)}^{n}`, `\sum_{k=0}^{n} {a r^k}`.
+- Inside any text: `${d.note('Footnote text.')}` a footnote, `${d.m('x^2')}` an inline equation, `${d.ref('label')}` a clickable cross-reference and may point forward. It prints "Figure 3", "Table 2", "Section 1.2" or "Chapter 3", so do not write those words yourself; an equation prints just "(3.1)". Text is literal, so subscripts and symbols go through `d.m`, also in footnotes.
+- `contents(title, {levels, cls})`: the contents, under a visible title (`false` for none; the default is "Contents"). The kit reads the page numbers from one LibreOffice pass at save, exactly as each section shows them, so they appear in any viewer. Headings may fall anywhere; do not arrange pages around it.
+- `section({...})`: starts a new section, on a new page. `numbering: 'roman' | 'Roman' | 'decimal' | 'alpha'` (carries over from the previous section until changed), `start`, `columns`, `continuous` (no page break), `oddPage: true` (starts on a right-hand page, for chapter openers), `firstPage: 'plain'` (no running head on the section's first page), `footer`, `header`, `headerEven`, `pageLabel: 'of' | 'number' | 'none'`. Front matter is usually `{numbering: 'roman', start: 1}`, the body `{numbering: 'decimal', start: 1}`. `footer: false` and `header: false` remove them, here or for the whole document in `K.doc`. A `footer` string is literal left-hand text; the number on the right comes from `pageLabel`, and the default is "Page X of Y". A book with chapter openers uses one section per chapter: `{oddPage: true, firstPage: 'plain'}`.
+- **The whole `docx` package stays open; the kit never limits you.** It only saves work on numbering, contents numbers, equations and references. For anything it does not list (read the package's docs at `docx.js.org` or its `.d.ts` when unsure):
+  - Any object: `d.add(new K.D.Paragraph({...}), new K.D.Table({...}))`; `K.D` is the package, `d.W` is the text width in twips, `d.para(text, paragraphOpts, runOpts)` and `d.runs(text)` build pieces. Text styles: `docx: {run, paragraph}` in a class.
+  - Any section option: `d.section({ docx: { properties: { lineNumbers: { countBy: 5 }, page: { size: { orientation: K.D.PageOrientation.LANDSCAPE } } } } })`. Kit tables still size to `d.W`, so pass your own `K.D.Table` on a page of another width. Your own `footers` replace the kit's, and its contents page numbers then need a refresh in Word.
+  - Any document option: `K.doc({ docx: { compatibility: {...}, background: {...} } })`. Plain objects merge with what the kit set; anything else replaces it.
 
 ## Page count
 
@@ -39,10 +57,10 @@ Write the content once and let it flow; `pageBreak()` only for real section brea
 <python> <skills-root>/docx/check.py <project-root>/out/x.docx --pages 3 --expect "Q3 revenue" "Page 3 of 3" [--fit "node src/build.cjs"] [--text]
 <python> <skills-root>/artifact-taste/preview.py <project-root>/out/x.docx
 ```
-`check.py` validates the package, converts with LibreOffice, prints page count and fill, and confirms each `--expect` string ("Page N of M" is checked against the real page count). It exits 1 only for: invalid package, no heading styles, wrong page count, missing string. Then open the preview pages, fix what is wrong, rebuild.
+`check.py` validates the package, converts with LibreOffice, prints page count and fill, and confirms each `--expect` string ("Page N of M" is checked against the real page count). It exits 1 only for: invalid package, no heading styles, wrong page count, missing string. Then open the preview pages, fix what is wrong, rebuild. The preview is LibreOffice, not Word, and these are known differences where Word is right: it does not hyphenate; it shows the running head on a later section's plain first page; and it leaves out the blank pages that `oddPage` inserts, so the preview and `--pages` count fewer pages than print and a chapter can look like it opens on a left-hand page.
 
 ## Rules
 
 - Use only supplied facts and dates; label derived figures; label fictional scenarios. Do not invent citations.
-- No clipped text; images local with explicit size.
+- No clipped text; images local.
 - Comments, tracked changes and deep edits of uploaded Word files are out of scope; patch the generator.

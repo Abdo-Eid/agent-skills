@@ -18,36 +18,38 @@ Look for what only this content has: its objects, places, numbers, dates and not
 
 Structures you tend to forget: narrative, comparison, chronology, argument and evidence, question and answer, exception-led, overview then detail, reference to search rather than read, one diagram that develops. What can lead a page: type, data, a diagram, an image, a table, whitespace.
 
-## Dials: the look is dealt, not chosen
+## Dials: three looks are dealt, you pick one
 
-Left alone you pick the same look every time, and when asked to choose dials you pick the same ends every time. So the dials are dealt for this document. After writing your `Direction:` line, run:
+Left alone you pick the same look every time, and when asked to choose dials freely you pick the same ends every time. So chance narrows the choice and you make it. After writing your `Direction:` line, run:
 
 ```
 python <skills-root>/artifact-taste/dials.py <format> "<one line: the subject and what the document is for>"
 ```
 
-It deals shape, line, contrast, ground, type voice, scale, density, rhythm, alignment, colour role and colour temperature, with concrete settings for your format, and prints a `Dials:` line to copy under `Direction:`. The same subject line always gets the same deal.
+It deals three complete looks, far apart from each other, each setting shape, line, contrast, ground, type voice, scale, density, rhythm, alignment, colour role and colour temperature with concrete values for your format, and prints a `Dials:` line for each. The same subject line always gets the same three.
 
-- **Build what is dealt.** It is your brief for the look, as binding as the facts: an unusual combination is the point, so make it work rather than escape it.
-- You may change **at most three** dials, each only for a reason that comes from the subject (not from habit or ease); write each change into the line, e.g. `shape round (dealt sharp: the route map is made of circles)`.
-- Dials set the look; your `Direction:` sets the structure. Colours stay yours: pick hues of the dealt temperature that fit the subject.
-- Arabic and right-to-left: never italic, uppercase or letter-spacing; emphasis comes from weight, size or colour. Naskh faces read traditional, Cairo and Tajawal geometric; choose Western or Arabic-Indic digits for the audience.
+- **Hold each look against this subject and pick the one its material makes strongest.** Say why in the line, from the subject: its objects, its data, its audience, where it will be read. Not the most familiar and not the easiest to build: if one look is what you would have drawn anyway, that counts against it.
+- **No redraw, and build what you picked.** It is your brief for the look, as binding as the facts: when a combination is hard, make it work rather than escape it.
+- A requirement in the brief or a client's brand overrides any dial and does not count as a change: `colour none (brief: no colour)`.
+- Beyond that you may change **at most one** dial of your pick, only for a reason that comes from the subject (not from habit or ease); write the change into the line, e.g. `shape round (dealt sharp: the route map is made of circles)`.
+- Dials set the look; your `Direction:` sets the structure. Colours stay yours: pick hues of the chosen temperature that fit the subject.
+- Arabic and right-to-left: add `--rtl` to the dials command; never italic, uppercase or letter-spacing; emphasis comes from weight, size or colour. Naskh faces read traditional, Cairo and Tajawal geometric; choose Western or Arabic-Indic digits for the audience.
 - Familiar patterns (cards, a figure row, a centred cover, a dashboard) are fine when the subject calls for them, never because they came first.
 
 ## Commit, then build what you chose
 
-The first lines of your generator:
+The first lines of your source (a generator, or the HTML file for a PDF, where these are `<!-- … -->` comments):
 
 ```js
 // Direction: <subject material, the structure you chose, what the pages will concretely look like, why it beats the obvious version>
-// Dials: <the line dials.py printed, with any of your up to three changes and their reasons>
+// Dials: <the line of the look you picked, with why, and your one change if any>
 ```
 
-Then build that, all the way through; when a page gets hard, solve it inside the direction instead of drifting back to the template. The kits have no ready-made cover, header band, figure row or card grid: you compose every page.
+Then build that, all the way through; when a page gets hard, solve it inside the direction instead of drifting back to the template. There is no ready-made cover, header band, figure row or card grid: you compose every page.
 
 ## Styling: write the look once, as CSS
 
-The PDF and PPTX kits take a `style` object written in CSS and every primitive uses its class names; each kit turns it into its own native styling. The DOCX and XLSX kits use their own theme tokens and formats (see their skills).
+A PDF is plain HTML and CSS: write real CSS, with classes named for the roles in your document, and skip this section. The PPTX and DOCX kits take a `style` object written in CSS and every primitive uses its class names; each kit turns it into its own native styling (slide options, real Word styles). The XLSX kit uses its own roles and formats (see its skill).
 
 ```js
 style: {

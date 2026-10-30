@@ -75,6 +75,7 @@ def sheet(pages: list, target: Path, width: int = 420, cols: int = 4) -> bool:
 
 
 def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles default to cp1252 and crash on Arabic
     ap = argparse.ArgumentParser()
     ap.add_argument("file", type=Path)
     ap.add_argument("--out", type=Path)
@@ -125,17 +126,26 @@ def comment(src: Path, key: str) -> str:
     if not src.is_dir():
         return ""
     for f in sorted(src.rglob("*")):
-        if f.suffix not in (".cjs", ".js", ".mjs", ".py") or not f.is_file():
+        if f.suffix not in (".cjs", ".js", ".mjs", ".py", ".html", ".htm") or not f.is_file():
             continue
         lines = f.read_text(encoding="utf-8", errors="ignore").splitlines()
+        html = f.suffix in (".html", ".htm")
         for i, line in enumerate(lines):
             if key in line:
-                parts = [line.split(key, 1)[1].strip()]
-                for nxt in lines[i + 1:i + 6]:
-                    s = nxt.strip()
-                    if not s.startswith(("//", "#", "*")) or "Direction:" in s or "Dials:" in s:
-                        break
-                    parts.append(s.lstrip("/#* ").strip())
+                first = line.split(key, 1)[1]
+                parts = [first.split("-->", 1)[0].strip()]
+                if html:  # an HTML comment runs to its closing -->, over several lines if need be
+                    if "-->" not in first:
+                        for nxt in lines[i + 1:i + 6]:
+                            parts.append(nxt.split("-->", 1)[0].strip())
+                            if "-->" in nxt:
+                                break
+                else:
+                    for nxt in lines[i + 1:i + 6]:
+                        s = nxt.strip()
+                        if not s.startswith(("//", "#", "*")) or "Direction:" in s or "Dials:" in s:
+                            break
+                        parts.append(s.lstrip("/#* ").strip())
                 return " ".join(p for p in parts if p)
     return ""
 
