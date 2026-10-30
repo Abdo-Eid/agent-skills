@@ -248,7 +248,9 @@ def recalculate(input_path: Path, output_path: Path, timeout: int) -> dict[str, 
         produced = output_dir / "workbook.xlsx"
         check_zip(produced)
         output_report = workbook_report(produced)
-        if output_report["formulas"] != input_report["formulas"]:
+        # LibreOffice writes the constants FALSE and TRUE as FALSE() and TRUE(): the same formula, so not a change
+        same = lambda formula: formula.replace("FALSE()", "FALSE").replace("TRUE()", "TRUE")
+        if {k: same(v) for k, v in output_report["formulas"].items()} != {k: same(v) for k, v in input_report["formulas"].items()}:
             input_cells = set(input_report["formulas"])
             output_cells = set(output_report["formulas"])
             missing = sorted(input_cells - output_cells)
@@ -256,11 +258,16 @@ def recalculate(input_path: Path, output_path: Path, timeout: int) -> dict[str, 
             changed = sorted(
                 cell
                 for cell in input_cells & output_cells
-                if input_report["formulas"][cell] != output_report["formulas"][cell]
+                if same(input_report["formulas"][cell]) != same(output_report["formulas"][cell])
+            )
+            first = (
+                f" first change: {input_report['formulas'][changed[0]]} became {output_report['formulas'][changed[0]]}"
+                if changed
+                else ""
             )
             raise RuntimeError(
                 "LibreOffice changed formula lineage: "
-                f"missing={missing[:5]} added={added[:5]} changed={changed[:5]}"
+                f"missing={missing[:5]} added={added[:5]} changed={changed[:5]}{first}"
             )
         if output_report["formulaCells"] > 0 and output_report["missingCachedValues"]:
             sample = ", ".join(output_report["missingCachedValues"][:10])

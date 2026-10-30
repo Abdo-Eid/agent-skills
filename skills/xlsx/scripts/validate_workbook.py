@@ -887,11 +887,11 @@ def check_navigation(workbook: Any, issues: list[dict[str, Any]]) -> None:
     if len(workbook.sheetnames) < 5:
         return
     first = workbook[workbook.sheetnames[0]]
-    if first.title.strip().lower() not in {"index", "contents", "overview", "navigation"}:
+    if first.title.strip().lower() not in {"index", "contents", "overview", "navigation", "الفهرس", "المحتويات", "نظرة عامة", "الملخص"}:
         issue(
             issues,
             "XLSX_NAVIGATION_SHEET",
-            "workbooks with five or more sheets must begin with Index, Contents, Overview, or Navigation",
+            "workbooks with five or more sheets must begin with Index, Contents, Overview or Navigation (in Arabic: الفهرس, المحتويات, نظرة عامة or الملخص)",
             first.title,
         )
     if not hasattr(first, "iter_rows"):

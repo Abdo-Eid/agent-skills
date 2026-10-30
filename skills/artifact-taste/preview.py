@@ -6,14 +6,18 @@ Usage: preview.py <file> [--out DIR] [--dpi 90] [--max-pages 30]
 PDF pages are rendered with pdftoppm (poppler); office files are first converted to PDF by LibreOffice,
 each call with its own profile so parallel runs never collide. Writes page-NN.png and, if Pillow is
 available, sheet.png with all pages side by side. Prints one JSON line with the file list.
+A workbook is rendered with its gridlines and its row and column references showing, from a temporary copy, so cells
+can be seen and named; the file itself and its print setup are not changed.
 """
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 
@@ -33,16 +37,41 @@ def soffice() -> str:
     return found
 
 
+def grid_copy(source: Path, folder: Path) -> Path:
+    """A copy of a workbook that prints its gridlines and row and column references. Edits the XML directly: loading and
+    saving through a library would lose its charts."""
+    def patch(xml: str) -> str:
+        if "<printOptions" in xml:
+            xml = re.sub(r"<printOptions\b([^>]*?)/>", lambda m: "<printOptions" + re.sub(r'\s(gridLines|headings)="[^"]*"', "", m[1]) + ' gridLines="1" headings="1"/>', xml, count=1)
+        else:  # the schema fixes the order: printOptions comes right before these
+            at = min((i for i in (xml.find(t) for t in ("<pageMargins", "<pageSetup", "<headerFooter", "<rowBreaks", "<colBreaks", "<drawing", "<legacyDrawing", "<tableParts", "</worksheet>")) if i >= 0))
+            xml = xml[:at] + '<printOptions gridLines="1" headings="1"/>' + xml[at:]
+        # the references take width, so shrink a fixed print scale a little to keep the same pages
+        return re.sub(r'(<pageSetup\b[^>]*?\bscale=")(\d+)"', lambda m: f'{m[1]}{max(10, round(int(m[2]) * 0.93))}"', xml, count=1)
+
+    target = folder / source.name
+    with zipfile.ZipFile(source) as zin, zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if re.fullmatch(r"xl/worksheets/[^/]+\.xml", item.filename):
+                data = patch(data.decode("utf-8")).encode("utf-8")
+            zout.writestr(item, data)
+    return target
+
+
 def to_pdf(source: Path, out: Path) -> Path:
     if source.suffix.lower() == ".pdf":
         return source
     profile = Path(tempfile.mkdtemp(prefix="lo-profile-"))
+    copies = Path(tempfile.mkdtemp(prefix="lo-grid-"))
     try:
+        file = grid_copy(source, copies) if source.suffix.lower() in (".xlsx", ".xlsm") else source
         subprocess.run([soffice(), f"-env:UserInstallation={profile.as_uri()}", "--headless", "--norestore",
-                        "--convert-to", "pdf", "--outdir", str(out), str(source)],
+                        "--convert-to", "pdf", "--outdir", str(out), str(file)],
                        check=True, capture_output=True, timeout=240)
     finally:
         shutil.rmtree(profile, ignore_errors=True)
+        shutil.rmtree(copies, ignore_errors=True)
     pdf = out / f"{source.stem}.pdf"
     if not pdf.exists():
         sys.exit(f"FAIL LibreOffice produced no PDF for {source.name}")

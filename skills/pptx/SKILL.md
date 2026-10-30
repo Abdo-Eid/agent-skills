@@ -30,7 +30,7 @@ d.save('<project-root>/out/deck.pptx'); // last line; prints slide count
 
 **Style.** `style` is CSS as an object (see artifact-taste). Variables `--accent --ink --bg --muted --surface --rule --accent2 --deep` set the slide colours, and `--accent` is required (or a `palette`: `coral forest ocean plum ink dune midnight graphite`, as a starting set). Elements: `body` (all text), `th`, `td` (tables), `chart` (chart labels). Properties a slide can do: `fontFamily fontSize fontWeight fontStyle color lineHeight letterSpacing textTransform textAlign verticalAlign background padding border borderTop borderBottom borderInlineStart borderInlineEnd borderRadius opacity`, plus `pptx: {…}` for raw PptxGenJS options. Anything else stops the build and says what to do instead. `fontFamily` lists are resolved to a face every PowerPoint and LibreOffice has (Arial, Arial Narrow, Times New Roman, Courier New, or `serif / sans-serif / monospace`); right-to-left text uses the Noto Arabic faces.
 
-`d.slide(opts)` makes a slide: `cover` (no footer or number), `dark` (the palette's deep colours), `bg`, `note` (footer text for this slide), `num`. The footer line and slide number are added on non-cover slides.
+`d.slide(opts)` makes a slide: `cover` (no footer or number), `dark` (the deep colours), `bg`, `note` (footer text for this slide), `num`. The footer line and slide number are added on non-cover slides. Colours named for the theme (`accent`, `ink`, `var(--accent)` and so on) follow the slide, so a class stays readable on a dark slide: there `ink` is light and the accent is lightened until it reads, or set `--accentDk` yourself. A `#RRGGBB` value stays fixed.
 
 There is no ready-made cover, slide header, row of big numbers, step row or card grid. You compose every slide from boxes and primitives, so each deck takes the shape its subject needs.
 
@@ -52,8 +52,9 @@ There is no ready-made cover, slide header, row of big numbers, step row or card
 | `d.box(s, cls, {x,y,w,h})` | a region: background, border, radius, per-side borders from the class; returns the inside box after `padding` |
 | `d.stat(s,{x,y,w,h,value,label,cls,labelCls})` | one big number (shrunk to stay on one line) with its label |
 | `d.rect(s,{x,y,w,h,fill,line,lw,shape,alpha})`, `d.rule(s, x, y, w, color, pt)`, `d.panel(s,{x,y,w,h,fill,bar:'top'\|'left'})` | shapes, lines, a filled region (returns its padded inside) |
+| `d.line(s,{x1,y1,x2,y2,color,width,arrow,dash})`, `d.circle(s,{cx,cy,r,fill,line,lw,alpha})` | a line at any angle (`arrow`: `true`, `'both'`, `'start'`) and a circle, for drawing what the subject is; a label on a filled shape takes `on: '#colour'` in its box so the contrast check reads the right ground |
 | `d.table(s,{x,y,w,h,cols:[3,4,4],head:[],rows:[[]]})` | native table, rows share the height |
-| `d.bars(s,{x,y,w,h,labels,values\|series:[{name,values}],dir:'bar'\|'col',fmt,hi?})` | native chart with value labels; `fmt` `'$#,##0'`, `'0%'` (fractions), `'0.0'`; `hi` highlights one |
+| `d.bars(s,{x,y,w,h,labels,values\|series:[{name,values}],dir:'bar'\|'col',fmt,hi?})` | native chart with value labels; `fmt` `'$#,##0'`, `'0%'` (fractions), `'0.0'`; `hi` highlights one, and a value tiny beside the largest draws as a sliver with little colour to see |
 | `d.timeline(s, [{date,label,detail?,at?}], {x,y,w,h,dir:'h'\|'v',span?})` | markers; `at` 0..1 places them in proportion; two items draw a span with `span` text inside |
 
 Anything else: `s.addChart`, `s.addImage`, `s.addShape` directly, with `d.X(x, w)` for x so right-to-left mirrors.

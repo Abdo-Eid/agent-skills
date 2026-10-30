@@ -22,4 +22,4 @@ A dashboard sheet nobody asked for; every metric turned into a chart; KPI tiles 
 
 ## Dials that apply here
 
-Only density (row height, column spacing), the header treatment (accent fill or a rule under plain text) and gridlines on or off. Everything else stays plain.
+Only density (`rh` on tables) and the accent's temperature. Everything else stays plain, and readability outranks every dial: keep the filled header band, frozen headers, the input colour and legible sizes.

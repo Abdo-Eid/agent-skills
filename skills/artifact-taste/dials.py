@@ -10,6 +10,7 @@ A requirement in the brief or a client's brand overrides any dial and does not c
 --rtl (automatic when the subject line is in Arabic or Hebrew): never deals set-apart figures, which clash with joined script.
 """
 import argparse
+import colorsys
 import hashlib
 import re
 import sys
@@ -19,15 +20,17 @@ DIALS = {
     "shape": ("sharp corners, square fields", "slightly softened corners", "round: generous radius, pills, circles"),
     "line": ("no rules, or hairlines only", "medium rules", "heavy rules and frames"),
     "contrast": ("tonal and quiet: close values, a muted accent", "clear but calm", "black and white with one loud colour"),
-    "ground": ("white or light paper throughout", "light pages with some full colour fields", "dark or colour-field on most pages, not just a dark cover; on a single page, the page itself is dark"),
+    "ground": ("white, or the faintest tint of your accent, throughout", "light pages with some full colour fields", "dark or colour-field on most pages, not just a dark cover; on a single page, the page itself is dark"),
     "type": ("one family, weight and size carry everything", "one family, with figures set apart: tabular, condensed or Courier New", "a deliberate pairing: display serif or slab with a grotesk"),
     "scale": ("gentle steps between sizes", "a clear display size", "extreme: one huge display moment per page against small text"),
     "density": ("airy: few elements, a lot of space", "balanced", "packed and analytical"),
     "rhythm": ("uniform: every page or slide has the same weight", "a loud opening, then even", "alternating loud and quiet pages"),
     "alignment": ("strict column grid", "a grid with one offset element per page", "asymmetric: wide margins, offset blocks, things off-centre"),
     "colour": ("colour only marks data", "colour marks data and section starts", "colour builds the structure: bands, fields, coloured panels"),
-    "temperature": ("warm hues (rust, ochre, clay, wine)", "neutral greys with one hue", "cool hues (ink blue, teal, slate, green)"),
+    "temperature": ("warm hues", "neutral greys with one hue", "cool hues"),
 }
+# the accent's hue is dealt too: named hues get copied, and "warm" came out rust every time
+HUES = ([(325, 360), (0, 62)], [(0, 360)], [(150, 285)])
 SHORT = {
     "shape": ("sharp", "soft", "round"), "line": ("hairline", "medium", "heavy"), "contrast": ("tonal", "calm", "high"),
     "ground": ("light", "light with colour fields", "dark"), "type": ("one family", "family plus set-apart figures", "pairing"),
@@ -38,7 +41,7 @@ SHORT = {
 APPLIES = {
     "pptx": list(DIALS), "pdf": list(DIALS),
     "docx": ["line", "contrast", "type", "density", "temperature"],
-    "xlsx": ["density", "line", "temperature"],
+    "xlsx": ["density", "temperature"],
 }
 VALUES = {
     "pptx": {"shape": ("borderRadius 0", "borderRadius 4pt", "borderRadius 14-24pt; pills"), "line": ("0 or 0.5pt", "1.5pt", "3-6pt and frames"),
@@ -47,6 +50,7 @@ VALUES = {
     "pdf": {"shape": ("border-radius 0", "border-radius 1.5mm", "border-radius 4-8mm; pills"), "line": ("0 or 0.5pt", "1pt", "3pt bars and frames"),
             "scale": ("display 22-28pt over 10pt body", "display 36pt", "display 60-90pt over 9.5pt body"),
             "density": ("wide margins, short columns", "normal", "tight leading, small gaps, more per page")},
+    "xlsx": {"density": ("rh=24", "rh=20", "rh=16")},
 }
 
 
@@ -60,6 +64,20 @@ def deal(fmt: str, subject: str, seed: str, rtl: bool = False) -> dict:
     if rtl and out.get("type") == 1:
         out["type"] = 0
     return out
+
+
+def accent(fmt: str, subject: str, seed: str, temperature: int) -> str:
+    """A start colour inside the dealt temperature."""
+    key = f"{fmt}|{' '.join(subject.lower().split())}|{seed}|accent".encode("utf-8")
+    spans, n = HUES[temperature], int.from_bytes(hashlib.sha256(key).digest()[:4], "big")
+    n %= sum(b - a for a, b in spans)
+    for a, b in spans:
+        if n < b - a:
+            hue = a + n
+            break
+        n -= b - a
+    r, g, b = colorsys.hls_to_rgb(hue / 360, 0.38, 0.3 if temperature == 1 else 0.62)
+    return f"#{round(r * 255):02x}{round(g * 255):02x}{round(b * 255):02x}"
 
 
 def hand(fmt: str, subject: str, seed: str, rtl: bool = False, size: int = 3) -> list:
@@ -89,8 +107,13 @@ def main() -> int:
     for letter, dealt in zip("ABC", hands):
         print(f"\n{letter}")
         short = []
+        start = accent(a.format, a.subject, f"{a.seed}|{letter}", dealt["temperature"])
         for name, pos in dealt.items():
             extra = VALUES.get(a.format, {}).get(name)
+            if name == "temperature":
+                print(f"  {name:12} {DIALS[name][pos]}  [accent starts from {start}]")
+                short.append(f"{name} {SHORT[name][pos]} (accent {start})")
+                continue
             print(f"  {name:12} {DIALS[name][pos]}" + (f"  [{extra[pos]}]" if extra else ""))
             short.append(f"{name} {SHORT[name][pos]}")
         lines.append(f"Dials: {letter} · " + " · ".join(short) + " · why: <what in this subject makes it the strongest>")

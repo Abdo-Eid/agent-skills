@@ -32,7 +32,7 @@ It deals three complete looks, far apart from each other, each setting shape, li
 - **No redraw, and build what you picked.** It is your brief for the look, as binding as the facts: when a combination is hard, make it work rather than escape it.
 - A requirement in the brief or a client's brand overrides any dial and does not count as a change: `colour none (brief: no colour)`.
 - Beyond that you may change **at most one** dial of your pick, only for a reason that comes from the subject (not from habit or ease); write the change into the line, e.g. `shape round (dealt sharp: the route map is made of circles)`.
-- Dials set the look; your `Direction:` sets the structure. Colours stay yours: pick hues of the chosen temperature that fit the subject.
+- Dials set the look; your `Direction:` sets the structure. Colour starts from the look's dealt accent: keep its hue, set its lightness and saturation as the document needs, and take any others from its neighbours or its opposite. Moving to another hue is your one change.
 - Arabic and right-to-left: add `--rtl` to the dials command; never italic, uppercase or letter-spacing; emphasis comes from weight, size or colour. Naskh faces read traditional, Cairo and Tajawal geometric; choose Western or Arabic-Indic digits for the audience.
 - Familiar patterns (cards, a figure row, a centred cover, a dashboard) are fine when the subject calls for them, never because they came first.
 

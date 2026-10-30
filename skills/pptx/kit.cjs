@@ -64,8 +64,9 @@ function deck(o = {}) {
   const P0 = typeof o.palette === 'object' ? { ...PALETTES.coral, ...o.palette } : o.palette ? PALETTES[o.palette] : { bg: 'FFFFFF', surface: 'F1F1EE', ink: '1C1C1E', muted: '6B6B70', accent: sv('accent'), accent2: '6B6B70', rule: 'DCDCD8', deep: '1C1C1E' };
   if (!P0) throw new Error(`unknown palette ${o.palette}: ${Object.keys(PALETTES).join(' ')}, or set --accent in style`);
   const P = { ...P0 };
-  for (const k of ['bg', 'surface', 'ink', 'muted', 'accent', 'accent2', 'rule', 'deep']) if (sv(k)) P[k] = sv(k);
+  for (const k of ['bg', 'surface', 'ink', 'muted', 'accent', 'accent2', 'rule', 'deep', 'accentDk']) if (sv(k)) P[k] = sv(k);
   if (sv('accent') && !sv('accentText')) delete P.accentText;
+  if (sv('accent') && !sv('accentDk')) delete P.accentDk;
   // rtl: Noto Arabic faces; only a fonts object {head, body, ...} overrides them (a preset name is ignored)
   const fo = typeof o.fonts === 'object' ? o.fonts : null;
   const F = rtl ? { ...FONTS.arabic, ...fo } : { ...FONTS.editorial, ...(fo || FONTS[o.fonts || 'editorial']) };
@@ -105,7 +106,9 @@ function deck(o = {}) {
 
   const mk = (c) => ({ ...c, onAccent: readable(c.accent, 'FFFFFF', c.deep) });
   const LIGHT = mk({ bg: P.bg, surface: P.surface, ink: P.ink, muted: P.muted, accent: P.accent, accentText: P.accentText || P.accent, accent2: P.accent2, rule: P.rule, deep: P.deep });
-  const dk = P.accentDk || P.accent;
+  // the accent on a dark slide: --accentDk, or the accent lightened until it reads on the deep colour
+  let dk = P.accentDk || P.accent;
+  if (!P.accentDk) for (let t = 0.1; t <= 1 && contrast(dk, P.deep) < 4.5; t += 0.1) dk = mix(P.accent, 'FFFFFF', t);
   const DARK = P.dark ? LIGHT : mk({ bg: P.deep, surface: mix(P.deep, P.bg, 0.09), ink: P.bg, muted: mix(P.deep, P.bg, 0.68), accent: dk, accentText: dk, accent2: P.accent2, rule: mix(P.deep, P.bg, 0.22), deep: P.deep });
 
   const X = (x, w) => (rtl ? W - x - w : x);
@@ -124,8 +127,8 @@ function deck(o = {}) {
     if (v === undefined) return undefined;
     let x = String(v).trim();
     const m = x.match(/^var\(--([\w-]+)\)$/); if (m) x = m[1];
+    if (s && s.c[x]) return s.c[x];   // theme names follow the slide, so var(--accent) and var(--ink) stay readable on dark slides; use #RRGGBB for a fixed colour
     if (style[`--${x}`] !== undefined) x = String(style[`--${x}`]);
-    else if (s && s.c[x]) return s.c[x];
     x = x.replace('#', '');
     if (/^[0-9a-f]{3}$/i.test(x)) x = x.split('').map((c) => c + c).join('');
     if (!/^[0-9a-f]{6}$/i.test(x)) throw new Error(`style: colour ${v} must be #RRGGBB, a --variable or one of ${Object.keys(s ? s.c : LIGHT).join(' ')}`);
@@ -179,12 +182,12 @@ function deck(o = {}) {
   /** styled text: d.text(s, str, cls, {x, y, w, h, ...inline CSS}). An object in the cls slot is the box plus inline CSS. */
   function stext(s, str, cls, at) {
     if (cls && typeof cls === 'object' && !Array.isArray(cls)) { at = cls; cls = ''; }
-    const [b, inline] = split4(at);
+    const [b, { on, ...inline }] = split4(at);   // on: the colour under this text when a shape, not the slide, is its ground
     if ([b.x, b.y, b.w, b.h].some((v) => typeof v !== 'number')) throw new Error('text needs a box {x, y, w, h} in inches (from d.page, d.split, d.grid, d.stack)');
     const c = resolve(cls, inline);
     const inner = c.background || c.border || c.borderTop || c.borderBottom || c.borderInlineStart || c.borderInlineEnd ? paint(s, { ...c, padding: undefined }, b) : b;
     const { align, ...opt } = compile(s, c);
-    const size = opt.fontSize || S.body, ground = c.background ? colour(s, c.background) : s.c.bg, ink = opt.color || s.c.ink;
+    const size = opt.fontSize || S.body, ground = c.background ? colour(s, c.background) : on ? colour(s, on) : s.c.bg, ink = opt.color || s.c.ink;
     if (size < 18 && contrast(ink, ground) < 4.5) warn(`text "${String(str).slice(0, 24)}" (${size}pt, #${ink} on #${ground}) has contrast ${contrast(ink, ground).toFixed(1)}:1, under 4.5:1 for small text`);
     raw(s, caseOf(c, str), { ...inner, ...opt, align: align ? (align === flip('left') ? 'start' : align === flip('right') ? 'end' : align) : 'start' });
   }
@@ -223,6 +226,20 @@ function deck(o = {}) {
     s.addShape(shape, { x: X(x, w), y, w, h, fill: fill ? { color: fill, transparency: alpha || 0 } : { type: 'none' }, line: line ? { color: line, width: lw } : { type: 'none' } });
   }
   const rule = (s, x, y, w, color, pt = 0.75) => s.addShape('line', { x: X(x, w), y, w, h: 0, line: { color: color || s.c.rule, width: pt } });
+  /** a line between two points at any angle, mirror-aware: d.line(s, {x1, y1, x2, y2, color, width, arrow, dash}). arrow: true at the end, 'both', 'start'. */
+  function drawLine(s, a) {
+    const { x1, y1, x2, y2, color, width = 1.5, arrow, dash } = a;
+    for (const v of [x1, y1, x2, y2]) if (typeof v !== 'number') throw new Error('line needs {x1, y1, x2, y2} in inches');
+    const ax = rtl ? W - x1 : x1, bx = rtl ? W - x2 : x2;
+    s.addShape('line', { x: Math.min(ax, bx), y: Math.min(y1, y2), w: Math.abs(bx - ax), h: Math.abs(y2 - y1), ...(bx < ax ? { flipH: true } : {}), ...(y2 < y1 ? { flipV: true } : {}),
+      line: { color: color ? colour(s, color) : s.c.ink, width, ...(dash ? { dashType: dash === true ? 'dash' : dash } : {}), ...(arrow === true || arrow === 'both' ? { endArrowType: 'triangle' } : {}), ...(arrow === 'start' || arrow === 'both' ? { beginArrowType: 'triangle' } : {}) } });
+  }
+  /** a circle by its centre and radius, mirror-aware: d.circle(s, {cx, cy, r, fill, line, lw, alpha}) */
+  function circle(s, a) {
+    const { cx, cy, r, fill, line, lw, alpha } = a;
+    if ([cx, cy, r].some((v) => typeof v !== 'number')) throw new Error('circle needs {cx, cy, r} in inches');
+    rect(s, { x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, shape: 'ellipse', fill: fill ? colour(s, fill) : undefined, line: line ? colour(s, line) : undefined, lw, alpha });
+  }
 
   // ---- deck-level ----
   function slide(a = {}) {
@@ -356,7 +373,7 @@ function deck(o = {}) {
 
   return {
     pptx, T: { ...LIGHT, fonts: F, S, W, H, M }, rtl, X, mix, fit, page, inset, split, grid,
-    slide, text: stext, box, stack, rect, rule, stat, panel, table, timeline, bars,
+    slide, text: stext, box, stack, rect, rule, line: drawLine, circle, stat, panel, table, timeline, bars,
     save: async (file) => {
       require('fs').mkdirSync(require('path').dirname(file), { recursive: true });
       await pptx.writeFile({ fileName: file });

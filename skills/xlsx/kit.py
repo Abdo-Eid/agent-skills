@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Abdulhamed Samy Eid. All rights reserved.
 # SPDX-License-Identifier: LicenseRef-Proprietary
-"""XlsxWriter kit: styles, tables, charts, print setup, and finish() (recalc + QA contract + validate).
+"""XlsxWriter kit: styles, tables, charts, print setup, right-to-left, and finish() (recalc + QA contract + validate).
 
     sys.path.insert(0, "<skills-root>/xlsx"); from kit import Book
 
@@ -11,6 +11,7 @@ process every formula is written with value=<computed>, and the final workbook i
 """
 from __future__ import annotations
 
+import colorsys
 import datetime
 import json
 import math
@@ -26,6 +27,8 @@ from xlsxwriter.utility import xl_cell_to_rowcol, xl_col_to_name, xl_rowcol_to_c
 HERE = Path(__file__).resolve().parent
 INK, MUTED, RULE = "#1F2933", "#6B7785", "#D9E2EC"
 INPUT_INK, INPUT_FILL, LINK_INK, CALC_FILL = "#1F4FD8", "#EAF1FB", "#1B7F3B", "#EEF0F3"
+LABELS = {False: {"Input": "Input", "Formula": "Formula", "Cross-sheet": "Cross-sheet", "page": "Page &P of &N"},
+          True: {"Input": "إدخال", "Formula": "معادلة", "Cross-sheet": "من ورقة أخرى", "page": "صفحة &P من &N"}}
 # "money" shows whole dollars unless the table's typed-in numbers have cents (then "cents"); "money0" and "cents" force one.
 NF = {"money": "$#,##0;($#,##0)", "money0": "$#,##0;($#,##0)", "cents": "$#,##0.00;($#,##0.00)", "int": "#,##0",
       "dec": "#,##0.00", "pct": "0.0%", "date": "mmm d, yyyy", "year": "0", "text": None}
@@ -38,6 +41,14 @@ def _mix(hex_color: str, t: float) -> str:
     """Blend a colour toward white (t=0 keeps it, t=1 is white)."""
     rgb = [int(hex_color[i:i + 2], 16) for i in (1, 3, 5)]
     return "#" + "".join(f"{round(v + (255 - v) * t):02X}" for v in rgb)
+
+
+def _rotate(hex_color: str, degrees: float) -> str:
+    """The same colour moved round the wheel and quietened: chart series that sit beside the accent without shouting."""
+    r, g, b = [int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    h, _, s = colorsys.rgb_to_hls(r, g, b)
+    r, g, b = colorsys.hls_to_rgb((h + degrees / 360) % 1, 0.52, min(0.4, max(0.25, s)))
+    return "#" + "".join(f"{round(v * 255):02X}" for v in (r, g, b))
 
 
 def _px(width: float, digit: float = 7) -> int:
@@ -74,10 +85,10 @@ class Table:
         return self.headers.index(col) if isinstance(col, str) else col
 
     def col(self, col: int | str) -> str:
-        """Absolute range of one column's data rows (no total), for charts or formulas."""
+        """Absolute range of one column's data rows (no total), for charts or inside formulas: "=SUM(" + t.col(2) + ")"."""
         j = self._idx(col)
         L = xl_col_to_name(self.c0 + j)
-        ref = f"={_quote(self.sheet.name)}!${L}${self.r0 + 2}:${L}${self.r0 + 1 + self.n}"
+        ref = f"{_quote(self.sheet.name)}!${L}${self.r0 + 2}:${L}${self.r0 + 1 + self.n}"
         if _is_date(self.spec[j]):  # chart category axis reuses the column's date format
             self.sheet.book.date_refs[ref] = "mmm yy" if self.spec[j] == "date" else NF.get(self.spec[j], self.spec[j])
         return ref
@@ -97,6 +108,8 @@ class Sheet:
     def __init__(self, book: "Book", name: str, widths: list[float], grid: bool, fit: str | None):
         self.book, self.name, self.grid, self.fit = book, name, grid, fit
         self.ws = book.wb.add_worksheet(name)
+        if book.rtl:
+            self.ws.right_to_left()
         self.widths = {i: w for i, w in enumerate(widths)}
         for i, w in self.widths.items():
             self.ws.set_column(i, i, w)
@@ -157,7 +170,8 @@ class Sheet:
         """Key to the cell styles used on this sheet (Input, Formula, Cross-sheet); call it after the tables.
         Default place: column A, two rows below the last written row. Writes nothing if the sheet has no inputs or formulas."""
         r, c = xl_cell_to_rowcol(at) if at else (self.max_r + 2, 0)
-        shown = [("Input", "in", {}), ("Formula", "calc", {"bg_color": CALC_FILL}), ("Cross-sheet", "link", {})]
+        words = LABELS[self.book.rtl]
+        shown = [(words["Input"], "in", {}), (words["Formula"], "calc", {"bg_color": CALC_FILL}), (words["Cross-sheet"], "link", {})]
         for text, role, kw in [x for x in shown if x[1] in self.roles]:
             self._put(r, c, text, role, None, True, **kw)
             c += 1
@@ -277,6 +291,8 @@ class Sheet:
             if lines > 1 and c1 > 0:
                 ws.merge_range(r, 0, r, c1, text, self.book.fmt(role, None, False, text_wrap=True))
                 self.row_h[r] = 26 * lines + 6 if role == "title" else 15 * lines + 3
+        for r, h in self.row_h.items():
+            ws.set_row(r, h)
         ws.print_area(r0, c0, r1, c1)
         ws.center_horizontally()
         ws.set_margins(0.5, 0.5, 0.7, 0.7)
@@ -296,12 +312,14 @@ class Sheet:
         ws.set_print_scale(max(20, int(min(cap, scale[orient]) * 97)))
         if not page and self.header_row is not None:
             ws.repeat_rows(self.header_row)
-        ws.set_footer(f"&L&9{self.book.footer or self.name}&R&9Page &P of &N")
+        text, page_no = self.book.footer or self.name, LABELS[self.book.rtl]["page"]
+        ws.set_footer(f"&L&9{page_no}&R&9{text}" if self.book.rtl else f"&L&9{text}&R&9{page_no}")
         self.orient = orient
 
 
 class Book:
-    def __init__(self, path: str, accent: str | None = None, footer: str | None = None, font: str = "Arial"):
+    def __init__(self, path: str, accent: str | None = None, footer: str | None = None, font: str = "Arial", rtl: bool = False):
+        self.rtl = bool(rtl)
         if not accent:
             raise ValueError('choose the accent colour for this workbook, e.g. Book(path, accent="#2F5D50")')
         self.out = Path(path).resolve()
@@ -311,7 +329,7 @@ class Book:
         self.font = font
         self.wb = xlsxwriter.Workbook(str(self.raw), {"default_format_properties": {"font_name": font, "font_size": 10}})
         self.accent, self.footer = accent, footer
-        self.palette = [accent, "#C8793B", "#5B7C99", "#8A6FA8", "#7A8B3C", "#B04A4A", "#4F9DA6", "#C2A23A"]
+        self.palette = [accent, *(_rotate(accent, d) for d in (150, 40, -50, 200, 90, -100, 270))]
         self.sheets: list[Sheet] = []
         self._fmts: dict = {}
         self.wb.set_properties({"title": self.out.stem})
@@ -337,9 +355,9 @@ class Book:
             "in": {"font_color": INPUT_INK, "bg_color": INPUT_FILL},
             "head": {"bold": True, "font_color": "#FFFFFF", "bg_color": a},
             "total": {"bold": True, "top": 1, "top_color": a, "bg_color": _mix(a, 0.88)},
-            "note": {"font_color": MUTED, "italic": True, "font_size": 9},
+            "note": {"font_color": MUTED, "italic": not self.rtl, "font_size": 9},
             "title": {"bold": True, "font_size": 20, "font_color": a},
-            "sub": {"italic": True, "font_color": MUTED},
+            "sub": {"italic": not self.rtl, "font_color": MUTED},
             "kpi_label": {"font_color": MUTED, "font_size": 9, "bold": True, "bg_color": _mix(a, 0.9), "indent": 1},
             "kpi": {"bold": True, "font_size": 18, "font_color": a, "bg_color": _mix(a, 0.9), "align": "left", "indent": 1},
             "hyperlink": {"font_color": INPUT_INK, "underline": 1},
@@ -349,12 +367,16 @@ class Book:
         if edge:
             d.update(border=1, border_color=RULE)
         d.update(kw)
+        if self.rtl:  # the sheet is mirrored: text starts at the right, and numbers stay right-aligned as Excel sets them
+            d["reading_order"] = 2
+            if d.get("align") == "left":
+                d["align"] = "right"
         self._fmts[key] = self.wb.add_format(d)
         return self._fmts[key]
 
     def chart(self, kind: str, title: str, cats: str, series: list[tuple], nf: str = "money0",
               labels: bool | None = None, x_title: str | None = None, y_title: str | None = None,
-              y2_nf: str = "pct", cat_nf: str | None = None):
+              y2_nf: str = "pct", cat_nf: str | None = None, y_min: float | None = None):
         """kind: column|bar|line|area|pie|doughnut, optionally 'column:stacked'. series = [(name, values_ref[, opts])];
         cats/values come from Table.col(). Series opts {'as': 'line'} draws that series as a line on a secondary axis
         (formatted y2_nf) over the columns. Pie/doughnut: one series, percentage labels, one colour per slice. labels: value
@@ -393,10 +415,17 @@ class Book:
         chart.set_chartarea({"border": {"none": True}})
         if not pie:
             cat = {"num_font": {"size": 10, "color": INK}, "line": {"color": RULE}, "name": x_title}
-            if cat_nf or cats in self.date_refs:
-                cat["num_format"] = cat_nf or self.date_refs[cats]
+            if cat_nf or cats.lstrip("=") in self.date_refs:
+                cat["num_format"] = cat_nf or self.date_refs[cats.lstrip("=")]
             val = {"num_format": nf_str, "num_font": {"size": 9, "color": MUTED}, "line": {"none": True},
                    "major_gridlines": {"visible": True, "line": {"color": RULE, "width": 0.75}}, "name": y_title}
+            if y_min is not None:
+                val["min"] = y_min
+            if self.rtl:  # first category at the right, the value axis on the right, bars growing from the right
+                if typ == "bar":
+                    val["reverse"] = True
+                else:
+                    cat["reverse"] = True
             if typ == "bar":  # XlsxWriter's x axis is the horizontal one on bar charts
                 chart.set_x_axis(val)
                 chart.set_y_axis({**cat, "reverse": True})  # first row at the top

@@ -57,7 +57,7 @@ function kitCss({ lang, rtl, size, margin, footer, header, digits, title, paper 
   const hairline = `border-top:.5pt solid ${ink}4D;vertical-align:top;padding-top:3.5mm;`;
   return `${faces()}
 @page{size:${W}mm ${H}mm;margin:${MT}mm ${margin}mm ${MB}mm;${paper ? `background:${paper};` : ''}
-${box(`bottom-${st}`, `content:${css(footer || title)};text-align:${st};${hairline}`)}
+${box(`bottom-${st}`, `content:${css(footer || title)};text-align:${st};white-space:nowrap;${hairline}`)}
 ${box('bottom-center', `content:"";${hairline}`)}
 ${box(`bottom-${en}`, `content:${css(lp + ' ')} counter(page${fmt}) ${css(' ' + lo + ' ')} counter(pages${fmt});text-align:${en};${hairline}`)}
 ${header ? box(`top-${en}`, `content:${css(header)};text-align:${en};vertical-align:bottom;padding-bottom:5mm;`) : ''}}
@@ -155,6 +155,15 @@ async function main() {
       await Promise.all([...document.fonts].map((f) => f.load().catch(() => {})));
       await document.fonts.ready;
     });
+
+    // the footer stays on one line, so text too long for the room beside the page number would run into it
+    const footerText = o.footer || title;
+    const footerMm = await page.evaluate(({ text, face, MM }) => {
+      const g = document.createElement('canvas').getContext('2d'); g.font = `8.5pt "${face}", sans-serif`;
+      return g.measureText(text).width / MM;
+    }, { text: footerText, face: rtl && lang !== 'he' ? 'IBMPlexSansArabic' : 'Rubik', MM });
+    const footerRoom = W - 2 * margin - 25; // 25mm for "Page 10 of 12" and a gap
+    if (footerMm > footerRoom) warn(`footer text is ${Math.round(footerMm)}mm wide and only ${Math.round(footerRoom)}mm fit beside the page number: shorten it to about ${Math.floor(footerText.length * footerRoom / footerMm)} characters`);
 
     // what a browser can measure about the laid-out page
     const m = await page.evaluate((paper) => {
