@@ -41,13 +41,22 @@ def grid_copy(source: Path, folder: Path) -> Path:
     """A copy of a workbook that prints its gridlines and row and column references. Edits the XML directly: loading and
     saving through a library would lose its charts."""
     def patch(xml: str) -> str:
+        # a sheet that hides its grid on screen (a chart page) keeps it hidden here, or the preview shows a page nobody will see
+        marks = ' headings="1"' if 'showGridLines="0"' in xml else ' gridLines="1" headings="1"'
         if "<printOptions" in xml:
-            xml = re.sub(r"<printOptions\b([^>]*?)/>", lambda m: "<printOptions" + re.sub(r'\s(gridLines|headings)="[^"]*"', "", m[1]) + ' gridLines="1" headings="1"/>', xml, count=1)
+            xml = re.sub(r"<printOptions\b([^>]*?)/>", lambda m: "<printOptions" + re.sub(r'\s(gridLines|headings)="[^"]*"', "", m[1]) + marks + "/>", xml, count=1)
         else:  # the schema fixes the order: printOptions comes right before these
             at = min((i for i in (xml.find(t) for t in ("<pageMargins", "<pageSetup", "<headerFooter", "<rowBreaks", "<colBreaks", "<drawing", "<legacyDrawing", "<tableParts", "</worksheet>")) if i >= 0))
-            xml = xml[:at] + '<printOptions gridLines="1" headings="1"/>' + xml[at:]
+            xml = xml[:at] + "<printOptions" + marks + "/>" + xml[at:]
         # the references take width, so shrink a fixed print scale a little to keep the same pages
         return re.sub(r'(<pageSetup\b[^>]*?\bscale=")(\d+)"', lambda m: f'{m[1]}{max(10, round(int(m[2]) * 0.93))}"', xml, count=1)
+
+    def unprint_hidden(xml: str) -> str:
+        """LibreOffice prints a hidden sheet that has a print area, which Excel never does."""
+        for i, tag in enumerate(re.findall(r"<sheet\b[^>]*/>", xml)):
+            if 'state="hidden"' in tag:
+                xml = re.sub(rf'<definedName name="_xlnm\.Print_Area" localSheetId="{i}"[^>]*>.*?</definedName>', "", xml)
+        return xml
 
     target = folder / source.name
     with zipfile.ZipFile(source) as zin, zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zout:
@@ -55,6 +64,8 @@ def grid_copy(source: Path, folder: Path) -> Path:
             data = zin.read(item.filename)
             if re.fullmatch(r"xl/worksheets/[^/]+\.xml", item.filename):
                 data = patch(data.decode("utf-8")).encode("utf-8")
+            elif item.filename == "xl/workbook.xml":
+                data = unprint_hidden(data.decode("utf-8")).encode("utf-8")
             zout.writestr(item, data)
     return target
 

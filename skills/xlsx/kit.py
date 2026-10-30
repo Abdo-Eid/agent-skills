@@ -37,18 +37,30 @@ DASHES = ["solid", "dash", "round_dot", "long_dash", "dash_dot"]
 A4 = (595.0, 842.0)  # points
 
 
-def _mix(hex_color: str, t: float) -> str:
-    """Blend a colour toward white (t=0 keeps it, t=1 is white)."""
-    rgb = [int(hex_color[i:i + 2], 16) for i in (1, 3, 5)]
-    return "#" + "".join(f"{round(v + (255 - v) * t):02X}" for v in rgb)
-
-
 def _rotate(hex_color: str, degrees: float) -> str:
     """The same colour moved round the wheel and quietened: chart series that sit beside the accent without shouting."""
     r, g, b = [int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
     h, _, s = colorsys.rgb_to_hls(r, g, b)
     r, g, b = colorsys.hls_to_rgb((h + degrees / 360) % 1, 0.52, min(0.4, max(0.25, s)))
     return "#" + "".join(f"{round(v * 255):02X}" for v in (r, g, b))
+
+
+ALERT, ALERT_FILL = "#B42318", "#FDE7E4"
+# one hue from dark to faint: headers and charts stay in one family, and only an alert leaves it
+THEMES = {
+    "blue": {"deep": "#2F4157", "accent": "#567C8E", "mid": "#A2C1D1", "soft": "#C7D9E5", "pale": "#E3ECF2", "faint": "#F3F6F9"},
+    "green": {"deep": "#14453D", "accent": "#1F7A63", "mid": "#74B8A2", "soft": "#BFE0D3", "pale": "#E1F1EA", "faint": "#F3F9F6"},
+    "clay": {"deep": "#5A3A25", "accent": "#A8693E", "mid": "#D2A27C", "soft": "#E8CDB5", "pale": "#F4E7DB", "faint": "#FBF7F2"},
+    "plum": {"deep": "#3E2A5C", "accent": "#7558A6", "mid": "#AE97D1", "soft": "#D5C9E8", "pale": "#EDE7F5", "faint": "#F8F6FB"},
+}
+
+
+def _ramp(hex_color: str) -> dict:
+    """A theme grown from one colour."""
+    r, g, b = [int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    h, _, s = colorsys.rgb_to_hls(r, g, b)
+    tone = lambda light, sat: "#" + "".join(f"{round(v * 255):02X}" for v in colorsys.hls_to_rgb(h, light, sat))
+    return {"deep": tone(0.22, min(s, 0.45)), "accent": hex_color, "mid": tone(0.6, s * 0.6), "soft": tone(0.78, s * 0.5), "pale": tone(0.9, 0.4), "faint": tone(0.97, 0.3)}
 
 
 def _px(width: float, digit: float = 7) -> int:
@@ -318,11 +330,148 @@ class Sheet:
         self.orient = orient
 
 
+class Dash(Sheet):
+    """A dashboard page: equal grid columns on a pale ground, no gridlines. Components are placed by grid column and row, from 1,
+    and each is white on the ground: header, nav, select, card, panel, chart, matrix, text. With a select, everything fed by it updates."""
+
+    def __init__(self, book: "Book", name: str, cols: int, col_w: float, row_h: float):
+        super().__init__(book, name, [1.5] + [col_w] * cols + [1.5], False, "page")
+        self.cols, self.std_h, self.selected = cols, row_h, False
+        ground = book.wb.add_format({"bg_color": book.ramp["faint"]})
+        self.ws.set_column(0, 0, 1.5, ground)
+        self.ws.set_column(1, cols, col_w, ground)
+        self.ws.set_column(cols + 1, cols + 1, 1.5, ground)
+        self.ws.set_column(cols + 2, 16383, None, None, {"hidden": True})  # unused rows and columns are hidden, so the page reads as one surface
+        self.ws.set_default_row(row_h, True)
+
+    def _print(self) -> None:
+        for r in range(self.max_r + 2):  # every row in use must be set, or it stays hidden with the rest
+            self.row_h.setdefault(r, self.std_h)
+        super()._print()
+
+    def _f(self, nf=None, **kw):
+        return self.book.fmt("label", nf, False, **kw)
+
+    def _gut(self, first=True, last=True):
+        """A thick ground-coloured edge, the gap that keeps neighbouring blocks apart without spending a grid column on it."""
+        g = self.book.ramp["faint"]
+        return {**({"left": 5, "left_color": g} if first else {}), **({"right": 5, "right_color": g} if last else {})}
+
+    def _block(self, row, col, rows, span, **kw):
+        for r in range(row - 1, row - 1 + rows):
+            for c in range(col, col + span):
+                self.ws.write_blank(r, c, None, self._f(**kw, **self._gut(c == col, c == col + span - 1)))
+        self._ext(row - 2 + rows, col + span - 1)
+
+    def _text(self, row, col, span, value, nf=None, rows=1, **kw):
+        """A merged run of cells holding text or a live formula."""
+        kw.setdefault("align", "left")  # "left" is the start of the line; a right-to-left book flips it
+        fmt = self._f(nf, **kw)
+        r, c = row - 1, col
+        if span > 1 or rows > 1:
+            self.ws.merge_range(r, c, r + rows - 1, c + span - 1, "", fmt)
+        self._put(r, c, value, "label", nf, **kw)
+        self._ext(r + rows - 1, c + span - 1)
+
+    def text(self, col, row, span, value, rows=1, **kw):
+        """A note on the page's ground, wrapped; the value may be a formula. kw are format options."""
+        kw = {"bg_color": self.book.ramp["faint"], "font_color": MUTED, "font_size": 9, "text_wrap": True, "valign": "top", **kw}
+        self._text(row, col, span, value, rows=rows, **kw)
+
+    def header(self, title, sub=None):
+        """A band across the top, rows 1 and 2."""
+        deep = self.book.ramp["deep"]
+        self._text(1, 1, self.cols, title, bg_color=deep, font_color="#FFFFFF", bold=True, font_size=16, indent=1)
+        self._text(2, 1, self.cols, sub or "", bg_color=deep, font_color=self.book.ramp["soft"], indent=1, valign="top")
+        self.row_h[0], self.row_h[1] = 30, 20
+
+    def nav(self, row, sheets):
+        """A strip of links to other sheets across the page. Longer names get the spare columns."""
+        ramp, n = self.book.ramp, len(sheets)
+        spans = [self.cols // n] * n
+        for i in sorted(range(n), key=lambda i: -len(sheets[i]))[:self.cols % n]:
+            spans[i] += 1
+        fmt, col = self._f(bg_color=ramp["pale"], font_color=ramp["deep"], font_size=9, align="center"), 1
+        for name, span in zip(sheets, spans):
+            if span > 1:
+                self.ws.merge_range(row - 1, col, row - 1, col + span - 1, "", fmt)
+            self.ws.write_url(row - 1, col, f"internal:{_quote(name)}!A1", fmt, string=name)
+            col += span
+        self._ext(row - 1, col - 1)
+        self.row_h[row - 1] = 20
+
+    def select(self, col, row, span, label, options, default):
+        """A dropdown the reader changes: label above, value below. Returns its absolute reference, for formulas."""
+        ramp = self.book.ramp
+        self._text(row, col, span, label + "  ▾", bg_color=ramp["faint"], font_color=ramp["deep"], font_size=9, bold=True)
+        self._text(row + 1, col, span, default, bg_color="#FFFFFF", font_color=INPUT_INK, bold=True, font_size=12, border=1, border_color=ramp["accent"], align="center")
+        self.row_h[row] = 24
+        self.ws.data_validation(row, col, row, col, {"validate": "list", "source": options})
+        if not self.selected:  # the book opens on the first dropdown, so its arrow is already showing
+            self.ws.set_selection(row, col, row, col)
+            self.selected = True
+        return f"{_quote(self.name)}!${xl_col_to_name(col)}${row + 1}"
+
+    def card(self, col, row, span, label, value, nf=None, note=None, alert=None):
+        """One figure that matters: label, value, optional note. 4 rows tall. alert=">1" turns the value red when true."""
+        ramp, gut = self.book.ramp, self._gut()
+        self._text(row, col, span, label, bg_color="#FFFFFF", font_color=ramp["accent"], font_size=9, bold=True, top=5, top_color=ramp["accent"], indent=1, **gut)
+        self._text(row + 1, col, span, value, nf, rows=2, bg_color="#FFFFFF", font_color=ramp["deep"], bold=True, font_size=20, indent=1, align="left", **gut)
+        self._text(row + 3, col, span, note or "", bg_color="#FFFFFF", font_color=MUTED, font_size=9, indent=1, **gut)
+        if alert:
+            op, val = re.fullmatch(r"([<>=!]+)\s*(.+)", alert).groups()
+            self.ws.conditional_format(row, col, row + 1, col, {"type": "cell", "criteria": op, "value": val, "format": self.book.wb.add_format({"font_color": ALERT})})
+
+    def panel(self, col, row, span, rows, title):
+        """A white block with a title; the title may be a live formula."""
+        self._block(row, col, rows, span, bg_color="#FFFFFF")
+        self._text(row, col, span, title, bg_color="#FFFFFF", font_color=self.book.ramp["deep"], bold=True, font_size=11, indent=1, bottom=1, bottom_color=self.book.ramp["pale"], **self._gut())
+        self.row_h[row - 1] = 24
+
+    def chart(self, chart, col, row, span, rows, title):
+        """A panel filled by a chart. Build the chart with b.chart(...); its title comes from the panel."""
+        self.panel(col, row, span, rows, title)
+        chart.set_title({"none": True})
+        chart.set_chartarea({"border": {"none": True}, "fill": {"color": "#FFFFFF"}})
+        font = chart.x_axis.get("num_font")
+        if font and getattr(chart, "short_axis", False):  # a short axis reads flat; left to itself Excel tilts labels that nearly fit
+            font["size"], font["rotation"], chart.x_axis["interval_unit"] = 900, 0, 1  # XlsxWriter holds sizes in hundredths
+        w = sum(_px(self.widths.get(c, 8.43)) for c in range(col, col + span))
+        h = round(self.std_h / 0.75) * (rows - 1)
+        chart.set_size({"width": w - 8, "height": h - 12})
+        self.ws.insert_chart(row, col, chart, {"x_offset": 4, "y_offset": 3, "object_position": 2})
+        self.charts += 1
+
+    def matrix(self, col, row, title, rows, cols, cell, nf="pct", label_nf=None, over=None, label_span=2):
+        """A heat table in a panel, one grid column per cell after the row labels: rows and cols are labels, cell(row_index, col_index)
+        gives a value or formula. The fill deepens with the value; over=1 marks values above it in red."""
+        ramp = self.book.ramp
+        start, end = col + label_span, col + label_span + len(cols) - 1
+        self.panel(col, row, label_span + len(cols), len(rows) + 3, title)
+        self._text(row + 1, col, label_span, "", bg_color="#FFFFFF", bottom=1, bottom_color=ramp["pale"], **self._gut(True, False))
+        for j, h in enumerate(cols):
+            self._text(row + 1, start + j, 1, h, bg_color="#FFFFFF", font_color=MUTED, bold=True, font_size=9, align="center", bottom=1, bottom_color=ramp["pale"], **self._gut(False, start + j == end))
+        for i, name in enumerate(rows):
+            r = row + 2 + i
+            self._text(r, col, label_span, name, label_nf, bg_color="#FFFFFF", bold=True, indent=1, **self._gut(True, False))
+            for j in range(len(cols)):
+                self._text(r, start + j, 1, cell(i, j), nf, bg_color="#FFFFFF", align="center", **self._gut(False, start + j == end))
+        first, last = row + 1, row + len(rows)
+        if over is not None:
+            self.ws.conditional_format(first, start, last, end, {"type": "cell", "criteria": ">", "value": over, "stop_if_true": True,
+                                       "format": self.book.wb.add_format({"bg_color": ALERT_FILL, "font_color": ALERT, "bold": True})})
+        self.ws.conditional_format(first, start, last, end, {"type": "2_color_scale", "min_color": "#FFFFFF", "max_color": ramp["soft"]})
+
+
 class Book:
-    def __init__(self, path: str, accent: str | None = None, footer: str | None = None, font: str = "Arial", rtl: bool = False):
+    def __init__(self, path: str, accent: str | None = None, footer: str | None = None, font: str = "Arial", rtl: bool = False, theme: str | None = None):
         self.rtl = bool(rtl)
-        if not accent:
-            raise ValueError('choose the accent colour for this workbook, e.g. Book(path, accent="#2F5D50")')
+        if theme and theme not in THEMES:
+            raise ValueError(f"unknown theme {theme}: {' '.join(THEMES)}, or pass accent=")
+        if not theme and not accent:
+            raise ValueError(f'choose the colour of this workbook: Book(path, accent="#2F5D50") or Book(path, theme=...) ({" ".join(THEMES)})')
+        self.ramp = dict(THEMES[theme]) if theme else _ramp(accent)
+        accent = self.ramp["accent"]
         self.out = Path(path).resolve()
         self.out.parent.mkdir(parents=True, exist_ok=True)
         self.raw = self.out.with_name(f".{self.out.stem}.raw.xlsx")
@@ -330,7 +479,7 @@ class Book:
         self.font = font
         self.wb = xlsxwriter.Workbook(str(self.raw), {"default_format_properties": {"font_name": font, "font_size": 10}})
         self.accent, self.footer = accent, footer
-        self.palette = [accent, *(_rotate(accent, d) for d in (150, 40, -50, 200, 90, -100, 270))]
+        self.palette = [self.ramp["accent"], self.ramp["deep"], self.ramp["mid"], self.ramp["soft"], *(_rotate(accent, d) for d in (150, 40, -50, 200))]
         self.sheets: list[Sheet] = []
         self._fmts: dict = {}
         self.wb.set_properties({"title": self.out.stem})
@@ -338,6 +487,12 @@ class Book:
         values = os.environ.get("KIT_XLSX_VALUES")  # set only in finish()'s second pass
         self.values: dict = json.loads(Path(values).read_text(encoding="utf-8")) if values else {}
         self.pass2 = bool(values)
+
+    def dash(self, name: str, cols: int = 14, col_w: float = 11.5, row_h: float = 18) -> Dash:
+        """A dashboard page; see class Dash."""
+        s = Dash(self, name, cols, col_w, row_h)
+        self.sheets.append(s)
+        return s
 
     def sheet(self, name: str, widths: list[float] = (), grid: bool = True, fit: str | None = None) -> Sheet:
         """grid=False hides the screen gridlines (a chart or summary page); they never print. fit='page'|'width' overrides the print mode."""
@@ -354,7 +509,7 @@ class Book:
         d.update({
             "label": {}, "calc": {}, "link": {},
             "in": {"font_color": INPUT_INK, "bg_color": INPUT_FILL},
-            "head": {"bold": True, "font_color": a, "bg_color": _mix(a, 0.9), "bottom": 2, "bottom_color": a},
+            "head": {"bold": True, "font_color": self.ramp["deep"], "bg_color": self.ramp["pale"], "bottom": 2, "bottom_color": a},
             "total": {"bold": True, "top": 1, "top_color": INK},
             "note": {"font_color": MUTED, "font_size": 9},
             "title": {"bold": True, "font_size": 15},
@@ -377,7 +532,7 @@ class Book:
 
     def chart(self, kind: str, title: str, cats: str, series: list[tuple], nf: str = "money0",
               labels: bool | None = None, x_title: str | None = None, y_title: str | None = None,
-              y2_nf: str = "pct", cat_nf: str | None = None, y_min: float | None = None):
+              y2_nf: str = "pct", cat_nf: str | None = None, y_min: float | None = None, legend: bool | None = None):
         """kind: column|bar|line|area|pie|doughnut, optionally 'column:stacked'. series = [(name, values_ref[, opts])];
         cats/values come from Table.col(). Series opts {'as': 'line'} draws that series as a line on a secondary axis
         (formatted y2_nf) over the columns. Pie/doughnut: one series, percentage labels, one colour per slice. labels: value
@@ -412,6 +567,7 @@ class Book:
                 d["y2_axis"] = True
             d.update(opts)
             (overlay if as_line else chart).add_series(d)
+        chart.short_axis = typ != "bar" and not pie and _count(cats) <= 14
         chart.set_title({"name": title, "name_font": {"size": 12, "bold": True, "color": INK}})
         chart.set_chartarea({"border": {"none": True}})
         if not pie:
@@ -436,7 +592,7 @@ class Book:
         if overlay:
             overlay.set_y2_axis({"num_format": NF.get(y2_nf, y2_nf), "num_font": {"size": 9, "color": MUTED}, "line": {"none": True}})
             chart.combine(overlay)
-        chart.set_legend({"position": "bottom", "font": {"size": 10}} if many or pie else {"none": True})
+        chart.set_legend({"position": "bottom", "font": {"size": 10}} if (many or pie if legend is None else legend) else {"none": True})
         return chart
 
     def _recalc(self, dst: Path) -> None:

@@ -1,6 +1,6 @@
 # Taste for workbooks
 
-A workbook gets the smallest creativity budget: it must be usable, readable and correct first. Its originality is in how the information is organised and how a reader moves through it, not in colour. A quiet workbook can be the best one.
+A workbook gets the smallest creativity budget: it must be usable, readable and correct first. Its originality is in how the information is organised and how a reader moves through it, not in colour. A quiet workbook can be the best one: most sheets need the grid, one header, and a conditional format or a small touch only where a value needs to be seen.
 
 ## A workbook can be
 
@@ -19,6 +19,10 @@ A model (inputs, calculations, outputs), a decision surface, a work queue, a led
 ## Your workbook attractors
 
 A dashboard sheet nobody asked for; every metric turned into a chart; KPI tiles above a table that already shows the numbers.
+
+## Plain sheet or dashboard
+
+Most workbooks need no dashboard. Make a dashboard page when the brief asks for one, or when one reader keeps coming back to the same data with a different question each time and reads rather than edits. A reader who picks nothing can still have one, as a static page, if a one-page view is what was asked for. Do not make one for a list someone works through, a model someone edits, or a summary with one answer: those are better as a filtered table, inputs and outputs, or a short sheet. The data sheets behind a dashboard stay plain.
 
 ## Dials that apply here
 
