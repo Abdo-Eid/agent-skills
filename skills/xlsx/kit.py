@@ -26,9 +26,9 @@ from xlsxwriter.utility import xl_cell_to_rowcol, xl_col_to_name, xl_rowcol_to_c
 
 HERE = Path(__file__).resolve().parent
 INK, MUTED, RULE = "#1F2933", "#6B7785", "#D9E2EC"
-INPUT_INK, INPUT_FILL, LINK_INK, CALC_FILL = "#1F4FD8", "#EAF1FB", "#1B7F3B", "#EEF0F3"
-LABELS = {False: {"Input": "Input", "Formula": "Formula", "Cross-sheet": "Cross-sheet", "page": "Page &P of &N"},
-          True: {"Input": "إدخال", "Formula": "معادلة", "Cross-sheet": "من ورقة أخرى", "page": "صفحة &P من &N"}}
+INPUT_INK, INPUT_FILL = "#1F4FD8", "#F1F6FD"
+LABELS = {False: {"Input": "Blue cells are inputs", "page": "Page &P of &N"},
+          True: {"Input": "الخانات الزرقاء للإدخال", "page": "صفحة &P من &N"}}
 # "money" shows whole dollars unless the table's typed-in numbers have cents (then "cents"); "money0" and "cents" force one.
 NF = {"money": "$#,##0;($#,##0)", "money0": "$#,##0;($#,##0)", "cents": "$#,##0.00;($#,##0.00)", "int": "#,##0",
       "dec": "#,##0.00", "pct": "0.0%", "date": "mmm d, yyyy", "year": "0", "text": None}
@@ -159,22 +159,19 @@ class Sheet:
 
     def title(self, text: str, sub: str | None = None) -> None:
         self._put(0, 0, text, "title", None)
-        self.row_h[0] = 32
+        self.row_h[0] = 26
         self.heading[0] = (text, "title")
         if sub:
             self._put(1, 0, sub, "sub", None)
-            self.row_h[1] = 18
+            self.row_h[1] = 17
             self.heading[1] = (sub, "sub")
 
     def legend(self, at: str | None = None) -> None:
-        """Key to the cell styles used on this sheet (Input, Formula, Cross-sheet); call it after the tables.
-        Default place: column A, two rows below the last written row. Writes nothing if the sheet has no inputs or formulas."""
+        """One line saying what the blue cells are; call it after the tables. Default place: column A, two rows below the
+        last written row. Writes nothing if the sheet has no inputs."""
         r, c = xl_cell_to_rowcol(at) if at else (self.max_r + 2, 0)
-        words = LABELS[self.book.rtl]
-        shown = [(words["Input"], "in", {}), (words["Formula"], "calc", {"bg_color": CALC_FILL}), (words["Cross-sheet"], "link", {})]
-        for text, role, kw in [x for x in shown if x[1] in self.roles]:
-            self._put(r, c, text, role, None, True, **kw)
-            c += 1
+        if "in" in self.roles:
+            self._put(r, c, LABELS[self.book.rtl]["Input"], "note", None, font_color=INPUT_INK)
 
     def inputs(self, at: str, items: list[tuple]) -> dict[str, str]:
         """Two columns, no header: items = [(label, value, fmt[, note])] -> label in `at`, blue input value one column right
@@ -219,8 +216,12 @@ class Sheet:
             spec = ["cents" if s == "money" else s for s in spec]  # typed-in cents anywhere: all "money" columns show cents
         left = [s in (None, "text") for s in spec]
         for j, h in enumerate(headers):
-            self._put(r0, c0 + j, h, "head", None, **({"align": "left", "indent": 1} if left[j] else {"align": "right"}))
-        self.row_h[r0] = 26
+            # a filter arrow sits at the cell's right edge: right-aligned text goes under it, so filtered headers align left with room for it
+            self._put(r0, c0 + j, h, "head", None, **({"align": "left", "indent": 1} if left[j] or filt else {"align": "right"}))
+            if filt and self.widths.get(c0 + j, 8.43) < len(str(h)) * 1.15 + 5:
+                self.widths[c0 + j] = len(str(h)) * 1.15 + 5
+                self.ws.set_column(c0 + j, c0 + j, self.widths[c0 + j])
+        self.row_h[r0] = 24
         for i, row in enumerate(rows):
             r = r0 + 1 + i
             self.row_h[r] = rh
@@ -338,8 +339,8 @@ class Book:
         self.values: dict = json.loads(Path(values).read_text(encoding="utf-8")) if values else {}
         self.pass2 = bool(values)
 
-    def sheet(self, name: str, widths: list[float] = (), grid: bool = False, fit: str | None = None) -> Sheet:
-        """grid=True keeps screen gridlines (use on raw/data sheets); fit='page'|'width' overrides the print mode."""
+    def sheet(self, name: str, widths: list[float] = (), grid: bool = True, fit: str | None = None) -> Sheet:
+        """grid=False hides the screen gridlines (a chart or summary page); they never print. fit='page'|'width' overrides the print mode."""
         s = Sheet(self, name, list(widths), grid, fit)
         self.sheets.append(s)
         return s
@@ -351,21 +352,21 @@ class Book:
         a = self.accent
         d = {"font_name": self.font, "font_color": INK, "valign": "vcenter"}
         d.update({
-            "label": {}, "calc": {}, "link": {"font_color": LINK_INK},
+            "label": {}, "calc": {}, "link": {},
             "in": {"font_color": INPUT_INK, "bg_color": INPUT_FILL},
-            "head": {"bold": True, "font_color": "#FFFFFF", "bg_color": a},
-            "total": {"bold": True, "top": 1, "top_color": a, "bg_color": _mix(a, 0.88)},
-            "note": {"font_color": MUTED, "italic": not self.rtl, "font_size": 9},
-            "title": {"bold": True, "font_size": 20, "font_color": a},
-            "sub": {"italic": not self.rtl, "font_color": MUTED},
-            "kpi_label": {"font_color": MUTED, "font_size": 9, "bold": True, "bg_color": _mix(a, 0.9), "indent": 1},
-            "kpi": {"bold": True, "font_size": 18, "font_color": a, "bg_color": _mix(a, 0.9), "align": "left", "indent": 1},
+            "head": {"bold": True, "font_color": a, "bg_color": _mix(a, 0.9), "bottom": 2, "bottom_color": a},
+            "total": {"bold": True, "top": 1, "top_color": INK},
+            "note": {"font_color": MUTED, "font_size": 9},
+            "title": {"bold": True, "font_size": 15},
+            "sub": {"font_color": MUTED},
+            "kpi_label": {"font_color": MUTED, "font_size": 9, "indent": 1},
+            "kpi": {"bold": True, "font_size": 16, "align": "left", "indent": 1},
             "hyperlink": {"font_color": INPUT_INK, "underline": 1},
         }[role])
         if nf and NF.get(nf, nf):
             d["num_format"] = NF.get(nf, nf)
-        if edge:
-            d.update(border=1, border_color=RULE)
+        if edge:  # gridlines do not print, so data rows carry a pale rule of their own for paper
+            d.update(bottom=1, bottom_color=RULE)
         d.update(kw)
         if self.rtl:  # the sheet is mirrored: text starts at the right, and numbers stay right-aligned as Excel sets them
             d["reading_order"] = 2
@@ -411,7 +412,7 @@ class Book:
                 d["y2_axis"] = True
             d.update(opts)
             (overlay if as_line else chart).add_series(d)
-        chart.set_title({"name": title, "name_font": {"size": 13, "bold": True, "color": INK}})
+        chart.set_title({"name": title, "name_font": {"size": 12, "bold": True, "color": INK}})
         chart.set_chartarea({"border": {"none": True}})
         if not pie:
             cat = {"num_font": {"size": 10, "color": INK}, "line": {"color": RULE}, "name": x_title}

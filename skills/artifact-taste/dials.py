@@ -30,7 +30,8 @@ DIALS = {
     "temperature": ("warm hues", "neutral greys with one hue", "cool hues"),
 }
 # the accent's hue is dealt too: named hues get copied, and "warm" came out rust every time
-HUES = ([(325, 360), (0, 62)], [(0, 360)], [(150, 285)])
+# yellow-greens are left out: at this lightness they go muddy (olive, mustard)
+HUES = ([(330, 360), (0, 28)], [(195, 235)], [(165, 270)])
 SHORT = {
     "shape": ("sharp", "soft", "round"), "line": ("hairline", "medium", "heavy"), "contrast": ("tonal", "calm", "high"),
     "ground": ("light", "light with colour fields", "dark"), "type": ("one family", "family plus set-apart figures", "pairing"),

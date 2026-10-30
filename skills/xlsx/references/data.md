@@ -9,7 +9,7 @@ Profile the input first (`references/read-analyze.md`: schema, row count, nulls,
 - Summary and chart sheets read from Cleaned Data by formula (`COUNTIFS`, `SUMIFS`, `AVERAGEIFS`, `INDEX/MATCH`; avoid `XLOOKUP`, `FILTER`, `LET`, dynamic arrays: LibreOffice may not cache them).
 - `Data Dictionary`: source header, readable label, definition, unit, cleaning rule, caveat. Summaries and charts use the readable labels; do not add a second header row inside a table.
 - Treat `0`, `-1`, `N/A`, `Unknown`, blank as distinct unless the source proves they mean the same. Rank only within comparable units, or normalize with a stated method. Report threshold sensitivity (ties, rows just outside the cutoff).
-- Screen gridlines stay on (`grid=True`), headers and id columns frozen, no blanket white fill. `table()` already puts thin pale borders on every cell so printed rows keep their structure. Long sheets print one page wide, header repeated.
+- Screen gridlines stay on (`grid=True`), headers and id columns frozen, no blanket white fill. `table()` already puts a pale rule under every row so printed rows keep their structure. Long sheets print one page wide, header repeated.
 
 ## Extra QA contract keys (pass as `b.finish(extra={...})`)
 

@@ -6,7 +6,7 @@
 
 ## Print and gridlines (why kit does what it does)
 
-- `hide_gridlines(0)` PRINTS gridlines; the default `1` hides them on paper and keeps them on screen; `2` hides both. Kit uses 1 for data sheets (`grid=True`) and 2 for presentation sheets.
+- `hide_gridlines(0)` PRINTS gridlines; the default `1` hides them on paper and keeps them on screen; `2` hides both. Kit uses 1 by default, so a sheet looks like Excel on screen and prints clean; `grid=False` uses 2, for a chart page.
 - Fit-to-page shrinks but never enlarges, so a small sheet lands tiny in a corner. Kit sets an explicit `set_print_scale` computed from column widths and row heights, centers the page, and picks portrait or landscape by whichever fills more.
 - Override with `b.sheet(..., fit="page")` (everything on one page) or `fit="width"` (one page wide, as tall as needed).
 - Keep charts inside the printed block: `s.chart(chart, "A11:D25")` sizes the chart to those cells.

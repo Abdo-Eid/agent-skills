@@ -8,7 +8,7 @@ A model (inputs, calculations, outputs), a decision surface, a work queue, a led
 
 ## Usability checklist
 
-- Inputs, calculations and outputs are kept apart, and the reader can tell which is which (the kit's blue inputs and legend).
+- Inputs, calculations and outputs are kept apart, and the reader can tell which is which (the kit's blue inputs and its one-line legend). Results stay in plain ink: a colour on a number should mean something the reader needs.
 - One header style per sheet; headers frozen; column widths fit their content; units in the headers.
 - One number format per kind of value; percentages as percentages, money as money.
 - No merged cells inside data; no blank spacer columns inside a table.
