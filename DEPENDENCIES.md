@@ -18,11 +18,11 @@ The machine that runs a skill provides its dependencies. Each format skill carri
 
 | Component | Current target |
 |---|---|
-| Operating system | Debian 12 Bookworm |
+| Operating system | Debian 13 Trixie |
 | Node.js | 22.x |
-| Python | 3.11.x |
+| Python | 3.12.x, from the `python:3.12-slim-trixie` base; apt adds no other |
 | Browser | Playwright Chromium headless shell |
-| Office engine | LibreOffice Writer, Calc, and Impress from Debian Bookworm |
+| Office engine | Headless LibreOffice 26.8 Writer, Calc, and Impress from `trixie-backports` |
 | XML parser | Python standard library, with expat 2.4.1 or newer (the OOXML validators check it and reject any DOCTYPE) |
 
 Package versions below are the current image pins or scaffold-declared ranges. They are not acceptance evidence: consumers must run the skill smoke matrix before promotion.
@@ -31,13 +31,14 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 
 | Package/binary | Skills | Purpose |
 |---|---|---|
-| `python3`, `python3-pip` | PDF, XLSX, DOCX QA | Python generators, analysis, and validators |
+| Python 3.12 with pip | PDF, XLSX, DOCX QA | Python generators, analysis, and validators |
 | Node.js 22 | PDF, PPTX, DOCX | JavaScript generators |
 | `zip`, `unzip` | All Office formats | Package inspection and source bundling |
-| LibreOffice Core, Writer, Calc, Impress | PPTX, XLSX, DOCX, artifact-taste preview | Headless compatibility, recalculation, and conversion to PDF for page previews |
+| Headless LibreOffice Writer, Calc, Impress | PPTX, XLSX, DOCX, artifact-taste preview | Headless compatibility, recalculation, and conversion to PDF for page previews |
 | `poppler-utils` | PDF, DOCX, artifact-taste preview | `pdftotext` for the Arabic text check and the DOCX contents page numbers; `pdftoppm` renders page images |
 | Chromium headless shell | PDF, artifact-taste `image.cjs` | Browser rendering; drawn images for any format |
-| DejaVu, Liberation, Noto, Noto CJK, Noto Color Emoji fonts | All visual formats | Predictable multilingual rendering and fallbacks |
+| DejaVu, Liberation, Liberation Sans Narrow, Noto, Noto CJK, Noto Color Emoji fonts | All visual formats | Predictable multilingual rendering and fallbacks |
+| The families in `skills/fonts/`, installed system-wide | PPTX, DOCX, XLSX previews | Lets a preview show these fonts when a document names them |
 
 ## PDF
 
@@ -45,8 +46,8 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 
 | Ecosystem | Package | Pinned version | Purpose | License |
 |---|---|---:|---|---|
-| Python | `pypdf` | 6.15.0 | PDF inspection, merging, targeted manipulation, and the check command | BSD-3-Clause |
-| Python | `Pillow` | 12.3.0 | Optional: image dimensions and normalization (no skill imports it) | MIT-CMU |
+| Python | `pypdf` | 6.21.4 | PDF inspection, merging, targeted manipulation, and the check command | BSD-3-Clause |
+| Python | `Pillow` | 13.0.0 | Optional: image dimensions and normalization (no skill imports it) | MIT-CMU |
 | Python | `matplotlib` | 3.11.1 | Optional: chart images until DOCX has an SVG chart recipe (PDF charts are inline SVG) | PSF-compatible |
 | Node | `playwright` | 1.62.1 | HTML/CSS-to-PDF: the single PDF route for every language | Apache-2.0 |
 
@@ -95,8 +96,8 @@ ReportLab is no longer used, including for Latin documents. Documents are plain 
 
 | Ecosystem | Package | Pinned version | Purpose | License |
 |---|---|---:|---|---|
-| Node | `docx` | 9.7.1 | Editable Word document generation | MIT |
-| Python | `pypdf` | 6.15.0 | Page count and page fill in the check (reads the LibreOffice PDF) | BSD-3-Clause |
+| Node | `docx` | 9.15.0 | Editable Word document generation | MIT |
+| Python | `pypdf` | 6.21.4 | Page count and page fill in the check (reads the LibreOffice PDF) | BSD-3-Clause |
 
 ### QA
 
@@ -106,24 +107,26 @@ ReportLab is no longer used, including for Latin documents. Documents are plain 
 
 ## Reference Installation
 
-The commands below are a convenience baseline for Debian 12. Production deployments should pin an image digest and package versions and preserve applicable license notices.
+The commands below are a convenience baseline for Debian 13 on the `python:3.12-slim-trixie` base, with Node 22 from nodejs.org. Production deployments should pin an image digest and package versions and preserve applicable license notices.
 
 ```bash
+echo "deb http://deb.debian.org/debian trixie-backports main" > /etc/apt/sources.list.d/backports.list
 apt-get update && apt-get install -y --no-install-recommends \
-  python3 python3-pip zip unzip poppler-utils \
-  libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress \
-  fonts-dejavu fonts-liberation fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji
+  zip unzip poppler-utils fontconfig \
+  fonts-dejavu fonts-liberation fonts-liberation-sans-narrow fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji
+apt-get install -y --no-install-recommends -t trixie-backports \
+  libreoffice-writer-nogui libreoffice-calc-nogui libreoffice-impress-nogui
 ```
 
 ```bash
 pip3 install \
   XlsxWriter==3.2.9 openpyxl==3.1.5 pandas==3.0.5 \
-  pypdf==6.15.0 Pillow==12.3.0 matplotlib==3.11.1
+  pypdf==6.21.4 Pillow==13.0.0 matplotlib==3.11.1
 ```
 
 ```bash
 npm install -g \
-  playwright@1.62.1 pptxgenjs@4.0.1 docx@9.7.1
+  playwright@1.62.1 pptxgenjs@4.0.1 docx@9.15.0
 npx playwright install --only-shell chromium
 ```
 

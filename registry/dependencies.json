@@ -1,21 +1,20 @@
 {
   "schemaVersion": 1,
   "imageTarget": {
-    "os": "Debian 12 Bookworm",
+    "os": "Debian 13 Trixie",
     "node": "22.x",
-    "python": "3.11.x",
+    "python": "3.12.x, from the python:3.12-slim-trixie base; apt adds no other",
     "browser": "Playwright Chromium headless shell",
-    "office": "LibreOffice from Debian Bookworm"
+    "office": "Headless LibreOffice 26.8 from trixie-backports"
   },
   "shared": {
     "system": [
-      "python3",
-      "python3-pip",
       "zip",
       "unzip",
       "poppler-utils",
       "fonts-dejavu",
       "fonts-liberation",
+      "fonts-liberation-sans-narrow",
       "fonts-noto-core",
       "fonts-noto-cjk",
       "fonts-noto-color-emoji"
@@ -25,17 +24,17 @@
   "profiles": {
     "artifact-taste": {
       "python": [
-        { "name": "Pillow", "version": "12.3.0", "purpose": "contact sheet in preview.py (page images still render without it)", "optional": true }
+        { "name": "Pillow", "version": "13.0.0", "purpose": "contact sheet in preview.py (page images still render without it)", "optional": true }
       ],
       "node": [
         { "name": "playwright", "version": "1.62.1", "purpose": "image.cjs renders an HTML or SVG file to a PNG, with the Chromium headless shell", "optional": true }
       ],
-      "system": ["poppler-utils", "libreoffice-core", "libreoffice-writer", "libreoffice-calc", "libreoffice-impress"]
+      "system": ["poppler-utils", "libreoffice-writer-nogui", "libreoffice-calc-nogui", "libreoffice-impress-nogui"]
     },
     "pdf": {
       "python": [
-        { "name": "pypdf", "version": "6.15.0", "purpose": "inspection, manipulation and the check command" },
-        { "name": "Pillow", "version": "12.3.0", "purpose": "image dimensions and normalization", "optional": true },
+        { "name": "pypdf", "version": "6.21.4", "purpose": "inspection, manipulation and the check command" },
+        { "name": "Pillow", "version": "13.0.0", "purpose": "image dimensions and normalization", "optional": true },
         { "name": "matplotlib", "version": "3.11.1", "purpose": "optional chart images until DOCX has an SVG chart recipe; PDF charts are inline SVG", "optional": true }
       ],
       "node": [
@@ -48,7 +47,7 @@
       "node": [
         { "name": "pptxgenjs", "version": "4.0.1", "purpose": "authoring" }
       ],
-      "system": ["libreoffice-core", "libreoffice-impress"]
+      "system": ["libreoffice-impress-nogui"]
     },
     "xlsx": {
       "python": [
@@ -56,16 +55,16 @@
         { "name": "openpyxl", "version": "3.1.5", "purpose": "read-only analysis and QA" },
         { "name": "pandas", "version": "3.0.5", "purpose": "analysis" }
       ],
-      "system": ["libreoffice-core", "libreoffice-calc"]
+      "system": ["libreoffice-calc-nogui"]
     },
     "docx": {
       "node": [
-        { "name": "docx", "version": "9.7.1", "purpose": "authoring" }
+        { "name": "docx", "version": "9.15.0", "purpose": "authoring" }
       ],
       "python": [
-        { "name": "pypdf", "version": "6.15.0", "purpose": "page count and page fill in the check" }
+        { "name": "pypdf", "version": "6.21.4", "purpose": "page count and page fill in the check" }
       ],
-      "system": ["poppler-utils", "libreoffice-core", "libreoffice-writer"]
+      "system": ["poppler-utils", "libreoffice-writer-nogui"]
     }
   }
 }

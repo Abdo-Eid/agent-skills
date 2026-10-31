@@ -19,7 +19,7 @@ const PALETTES = {
   graphite: { bg: '1A1A1E', surface: '26262C', ink: 'F2F2EE', muted: 'A3A3A8', accent: 'C6F04A', accent2: 'FF7A59', rule: '36363D', deep: '1A1A1E', dark: true },
 };
 
-// Only fonts PowerPoint has everywhere and LibreOffice renders faithfully (Arial/Times/Courier map to metric-equal Liberation fonts).
+// Starting sets; any font name works through `fonts` or `fontFamily`.
 const FONTS = {
   editorial: { head: 'Times New Roman', body: 'Arial', mono: 'Arial', stat: 'Times New Roman', headBold: false },
   grotesk:   { head: 'Arial', body: 'Arial', mono: 'Arial', stat: 'Arial', headBold: true },
@@ -37,7 +37,6 @@ const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - 
 const readable = (bg, light, dark) => (contrast(bg, light) >= contrast(bg, dark) ? light : dark);
 
 // ---- stylesheet (shared concept in artifact-taste/SKILL.md, "Styling"): CSS as an object, compiled to PptxGenJS options.
-const SAFE = ['Arial', 'Arial Narrow', 'Times New Roman', 'Courier New', 'Noto Naskh Arabic', 'Noto Sans Arabic'];
 const GENERIC = { serif: 'Times New Roman', 'sans-serif': 'Arial', monospace: 'Courier New' };
 const ELEMENTS = ['body', 'th', 'td', 'chart'];
 const PROPS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'color', 'lineHeight', 'letterSpacing', 'textTransform', 'textAlign', 'verticalAlign',
@@ -135,10 +134,8 @@ function deck(o = {}) {
   };
   const face = (v) => {
     const list = (Array.isArray(v) ? v : String(v).split(',')).map((f) => String(f).trim().replace(/^["']|["']$/g, ''));
-    if (rtl) return list.find((f) => /arabic/i.test(f) && SAFE.includes(f)) || F.body; // right-to-left text needs an Arabic face; Latin faces fall back to the Noto Arabic body
-    const ok = list.map((f) => GENERIC[f] || f).find((f) => SAFE.includes(f) || Object.values(F).includes(f));
-    if (!ok) throw new Error(`style: none of ${list.join(', ')} is a font every PowerPoint and LibreOffice has; end the list with one of ${SAFE.join(', ')} or serif / sans-serif / monospace`);
-    return ok;
+    if (!list[0] || (rtl && GENERIC[list[0]])) return F.body;   // a generic name in right-to-left text means the Arabic body
+    return GENERIC[list[0]] || list[0];   // a file stores one name per run, so the first wish is the font
   };
   // border shorthand '2pt solid accent' | 'var(--line) ink': the first token that is a length is the width, the first other one the colour
   const isLen = (t) => { try { len(t); return true; } catch { return false; } };

@@ -52,6 +52,7 @@ style: {
 ```
 
 - CSS property names in camelCase; lengths with units (`'12pt'`, `'4mm'`), a bare number is points; a value may be `var(--name)` or just `name`. `fontFamily` is a list, first wish first.
+- Fonts: look before choosing. `fc-list : family` shows what this machine has, `<skills-root>/fonts` what the pack ships. Use whatever suits this document; a preview can only show fonts this machine has, and a reader without the font sees a substitute.
 - A property a format cannot do, or a misspelt one, stops the build with the reason; that message is the reference. A `pdf:` / `pptx:` key in a class passes raw native options.
 - Define a class once and reuse it; repeating the same inline style is a class you have not written yet.
 

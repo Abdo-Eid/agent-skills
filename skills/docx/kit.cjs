@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Abdulhamed Samy Eid. All rights reserved.
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// docx 9.7.1 kit. A `style` object written as CSS compiles to real Word styles (classes appear in Word's style gallery,
+// docx 9.15.0 kit. A `style` object written as CSS compiles to real Word styles (classes appear in Word's style gallery,
 // `composes` becomes basedOn). Mechanics: real headings with native numbering, tables with header rows, footnotes,
 // equations from TeX, numbered captions and cross-references, sections with their own page numbering, a contents page,
 // RTL. API in SKILL.md.
@@ -21,7 +21,6 @@ const PAGES = { A4: [11906, 16838], Letter: [12240, 15840], A5: [8391, 11906], B
 const NONE = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
 const line = (color, size = 4) => ({ style: BorderStyle.SINGLE, size, color });
 // Word has these everywhere and LibreOffice renders them with metric-compatible faces; other names get substituted.
-const SAFE = ['Arial', 'Arial Narrow', 'Times New Roman', 'Courier New', 'Tahoma', 'Sakkal Majalla', 'Traditional Arabic', 'Simplified Arabic', 'Noto Naskh Arabic', 'Noto Sans Arabic'];
 const GENERIC = { serif: 'Times New Roman', 'sans-serif': 'Arial', monospace: 'Courier New' };
 const ELEMENTS = ['body', 'title', 'subtitle', 'h1', 'h2', 'h3', 'caption', 'footnote', 'th', 'td', 'header', 'footer', 'contentsTitle', 'toc1', 'toc2', 'toc3'];
 const PROPS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontVariant', 'color', 'lineHeight', 'letterSpacing', 'textTransform', 'textDecoration', 'textAlign', 'textIndent',
@@ -117,7 +116,7 @@ function doc(o = {}) {
   const val = (v) => { for (let i = 0; i < 4 && typeof v === 'string'; i++) { const m = v.trim().match(/^var\(--([\w-]+)\)$/), k = m ? m[1] : v.trim(); if (style[`--${k}`] === undefined) break; v = style[`--${k}`]; } return v; };
   const tw = (v) => { v = val(v); if (typeof v === 'number') return Math.round(v * 20); const m = String(v).trim().match(/^(-?[\d.]+)\s*(pt|mm|cm|in|px)?$/); if (!m) throw new Error(`style: not a length: ${v}`); const n = +m[1]; return Math.round({ pt: n * 20, mm: n * 1440 / 25.4, cm: n * 14400 / 25.4, in: n * 1440, px: n * 15 }[m[2] || 'pt']); };
   const colour = (v) => { let x = String(v).trim(); const m = x.match(/^var\(--([\w-]+)\)$/); if (m) x = m[1]; if (style[`--${x}`] !== undefined) x = String(style[`--${x}`]); else if (t[x] && !['head', 'body', 'th', 'rule'].includes(x)) return t[x]; x = x.replace('#', ''); if (/^[0-9a-f]{3}$/i.test(x)) x = x.split('').map((c) => c + c).join(''); if (!/^[0-9a-f]{6}$/i.test(x)) throw new Error(`style: colour ${v} must be #RRGGBB or a --variable`); return x.toUpperCase(); };
-  const face = (v) => { const list = (Array.isArray(v) ? v : String(v).split(',')).map((f) => String(f).trim().replace(/^["']|["']$/g, '')).map((f) => GENERIC[f] || f); const want = list.find((f) => !(rtl && f === 'Arial Narrow')); if (!want) return o.csFont || 'Arial'; if (!SAFE.includes(want)) warn(`font ${want} is not on every machine: Word and LibreOffice substitute it where it is missing, which moves the layout. Safe: ${SAFE.join(', ')}`); return want; };   // a Word file stores one name per run, so the first wish is the font
+  const face = (v) => { const list = (Array.isArray(v) ? v : String(v).split(',')).map((f) => String(f).trim().replace(/^["']|["']$/g, '')).map((f) => GENERIC[f] || f); const want = list.find((f) => !(rtl && f === 'Arial Narrow')); if (!want) return o.csFont || 'Arial'; return want; };   // a Word file stores one name per run, so the first wish is the font
   const font = (f) => ({ ascii: f, hAnsi: f, eastAsia: f, cs: f });
   if (rtl && o.csFont) { t.body = o.csFont; t.head = o.csFont; }
   if (elements.body && elements.body.fontFamily) { t.body = face(elements.body.fontFamily); if (!o.theme) t.head = t.body; }   // headings follow the body face until h1… says otherwise
@@ -334,7 +333,7 @@ function doc(o = {}) {
 
     async save(file) {
       const pass = (pageOf) => {
-        class Contents extends D.TableOfContents { getTabStopsForLevel(level) { return super.getTabStopsForLevel(level, W); } }   // the package assumes a 9025-twip line
+        class Contents extends D.TableOfContents { getTabStopsForLevel(level, leader) { return super.getTabStopsForLevel(level, leader, W); } }   // the package assumes a 9025-twip line
         const flat = (arr) => arr.map((k) => { if (k && k.toc) return new Contents(rtl ? 'المحتويات' : 'Contents', { hyperlink: true, headingStyleRange: `1-${k.levels}`, beginDirty: false, cachedEntries: heads.filter((h) => h.lvl < k.levels).map((h) => ({ title: (h.prefix ? h.prefix + ' ' : '') + h.title, level: h.lvl + 1, page: pageOf ? pageOf(h) : undefined, href: h.anchor })) }); return k && k.build ? k.build() : k; });
         const fmt = { roman: D.NumberFormat.LOWER_ROMAN, Roman: D.NumberFormat.UPPER_ROMAN, decimal: D.NumberFormat.DECIMAL, alpha: D.NumberFormat.LOWER_LETTER };
         const mk = (txt) => new TextRun({ text: txt, rightToLeft: rtl || undefined });
@@ -395,11 +394,11 @@ function doc(o = {}) {
       if (usedToc) { measuring = true; const probe = await Packer.toBuffer(pass()); measuring = false; pageOf = await tocPages(probe, heads, headMark); }
       let buf = await Packer.toBuffer(pass(pageOf));
       if (o.mirror) { // the docx package has no option for this one setting; it belongs right after displayBackgroundShape in the schema's order
-        const JSZip = require(require.resolve('jszip', { paths: [path.dirname(require.resolve('docx'))] }));   // docx's own dependency, nested under it in a global install
-        const zip = await JSZip.loadAsync(buf), part = zip.file('word/settings.xml'), xml = await part.async('string');
+        const { unzipSync, zipSync, strFromU8, strToU8 } = require(require.resolve('fflate', { paths: [path.dirname(require.resolve('docx'))] }));   // docx's own dependency, nested under it in a global install
+        const files = unzipSync(buf), xml = strFromU8(files['word/settings.xml']);
         if (!xml.includes('<w:displayBackgroundShape')) throw new Error('mirror: unexpected settings.xml from the docx package');
-        zip.file('word/settings.xml', xml.replace(/(<w:displayBackgroundShape[^>]*\/>)/, '$1<w:mirrorMargins/>'));
-        buf = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+        files['word/settings.xml'] = strToU8(xml.replace(/(<w:displayBackgroundShape[^>]*\/>)/, '$1<w:mirrorMargins/>'));
+        buf = Buffer.from(zipSync(files, { level: 6 }));
       }
       fs.writeFileSync(file, buf); console.log('wrote', file); return api;
     },

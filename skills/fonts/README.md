@@ -15,7 +15,7 @@ Fonts shipped with the skill pack so documents do not depend on whatever the mac
 ## Using them
 
 - **PDF.** `pdf/build.cjs` loads every family here, so name one in any `font-family` without writing `@font-face`, and set `<html lang="ar" dir="rtl">` for Arabic. Chromium joins and orders Arabic itself.
-- **PPTX, DOCX, XLSX.** These formats store only the font name. The font must be installed where the file is opened or rendered; this pack does not install fonts. Use a family from this folder only if it is installed on the machines that open or render the file; otherwise prefer a font the readers already have.
+- **PPTX, DOCX, XLSX.** These formats store only the font name. The font must be installed where the file is opened or rendered, or the app substitutes another; this pack does not install fonts.
 
 ## Coverage notes
 
