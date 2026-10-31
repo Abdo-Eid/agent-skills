@@ -41,7 +41,6 @@ There is no ready-made cover, slide header, row of big numbers, step row or card
 | `d.page()` | the usable area: margin `d.T.M` = 0.7 all round, bottom above the footer |
 | `d.split(box, at, dir, gap)` | two boxes: `at` a share (0..1) or inches (> 1); `dir` `'h'` side by side, `'v'` stacked |
 | `d.grid(box, cols, rows, gap)` | cell boxes row by row; `cols` a count or relative widths `[2, 1, 1]` |
-| `d.inset(box, pad)` | the box shrunk by `pad` on every side |
 | `d.stack(s, box, [[str, cls], …], gap)` | places text items top to bottom, each as tall as its class needs; returns the space left below |
 
 **Primitives** (each takes a box and fills it; `cls` is a class name or array, inline CSS goes in the box object):
@@ -53,8 +52,8 @@ There is no ready-made cover, slide header, row of big numbers, step row or card
 | `d.stat(s,{x,y,w,h,value,label,cls,labelCls})` | one big number (shrunk to stay on one line) with its label |
 | `d.rect(s,{x,y,w,h,fill,line,lw,shape,alpha})`, `d.rule(s, x, y, w, color, pt)`, `d.panel(s,{x,y,w,h,fill,bar:'top'\|'left'})` | shapes, lines, a filled region (returns its padded inside) |
 | `d.line(s,{x1,y1,x2,y2,color,width,arrow,dash})`, `d.circle(s,{cx,cy,r,fill,line,lw,alpha})` | a line at any angle (`arrow`: `true`, `'both'`, `'start'`) and a circle, for drawing what the subject is; a label on a filled shape takes `on: '#colour'` in its box so the contrast check reads the right ground |
-| `d.table(s,{x,y,w,h,cols:[3,4,4],head:[],rows:[[]]})` | native table, rows share the height |
-| `d.bars(s,{x,y,w,h,labels,values\|series:[{name,values}],dir:'bar'\|'col',fmt,hi?})` | native chart with value labels; `fmt` `'$#,##0'`, `'0%'` (fractions), `'0.0'`; `hi` highlights one, and a value tiny beside the largest draws as a sliver with little colour to see |
+| `d.table(s,{x,y,w,h,cols:[3,4,4],head:[],rows:[[]],align?:['left','right','right']})` | native table, rows share the height; `align` per column; a cell may be `{text, color, bold}` |
+| `d.bars(s,{x,y,w,h,labels,values\|series:[{name,values}],dir:'bar'\|'col',fmt,hi?})` | native chart with value labels; `fmt` `'$#,##0'`, `'0%'` (fractions), `'0.0'`; `hi` highlights one, and a value tiny beside the largest draws as a sliver with little colour to see; negative values draw below zero in `dir:'col'`; in `'bar'` a negative value's label lands on its category name |
 | `d.timeline(s, [{date,label,detail?,at?}], {x,y,w,h,dir:'h'\|'v',span?})` | markers; `at` 0..1 places them in proportion; two items draw a span with `span` text inside |
 
 Anything else: `s.addChart`, `s.addImage`, `s.addShape` directly, with `d.X(x, w)` for x so right-to-left mirrors.
@@ -64,8 +63,7 @@ Anything else: `s.addChart`, `s.addImage`, `s.addShape` directly, with `d.X(x, w
 - Titles 28 pt or more, body 14 pt or more, labels 12 pt or more. No clipped or overlapping text; avoid `fit: 'shrink'`.
 - Native charts and tables, not pictures of them; images keep their aspect ratio.
 - Two dates only: never invent middle steps. Risk matrices: marker positions from named likelihood and impact maps; axis labels outside the grid.
-- Reconcile numbers, dates and labels against the brief; drop invented dates and causal claims.
 
 ## Arabic and right-to-left
 
-`deck({rtl: true})`: write coordinates left-to-right; the kit mirrors layout, tables and charts, so never reverse data yourself. Text uses the Noto Naskh/Sans Arabic faces; `textAlign: start` is the right side. Use `d.text` (raw `s.addText` needs `rtlMode: true` and `lang: 'ar-SA'`). Keep the digit style consistent.
+A negative number shows its minus at the far end (`54,000-`); start it with `‎` to keep `-54,000`. `deck({rtl: true})`: write coordinates left-to-right; the kit mirrors layout, tables and charts, so never reverse data yourself. Text uses the Noto Naskh/Sans Arabic faces; `textAlign: start` is the right side. Use `d.text` (raw `s.addText` needs `rtlMode: true` and `lang: 'ar-SA'`). Keep the digit style consistent.

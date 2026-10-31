@@ -23,11 +23,7 @@ A dark opening slide; a small label plus a sentence title on every slide; a gian
 
 ## Dials on a slide
 
-- Shape: `borderRadius` from 0 to about 24pt; pills are radius equal to half the height.
-- Line: 0.5pt hairlines to 4pt bars; frames are `border`, single edges are `borderTop` / `borderInlineStart`.
-- Scale: body 14 to 20pt; display from 40pt to 120pt or more for a poster slide.
 - Ground: `--bg` and `d.slide({dark: true})` per slide; a dark ground is a rhythm choice, not a default opener.
-- Density: 1 idea per slide (airy) to a full analytical slide; neither leaves the lower third empty by accident.
 
 ## Craft floor
 

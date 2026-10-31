@@ -2,10 +2,6 @@
 
 PDF gets the second-largest budget: page composition and editorial rhythm are the craft, and real CSS means almost any layout is possible.
 
-## A PDF can be
-
-A report, a dossier, a catalogue, a visual essay, a handbook, a programme, a ledger, a timetable, a field notebook, a magazine spread, a poster sequence.
-
 ## Let the data build the page
 
 The best documents put real data into their structure; the worst build a structure and have nothing to put in it. Before you draw a box, name what goes in it. A card holding one short sentence, or a grid repeating one word, is not a structure yet. Ask what shape this data has, then draw that shape:
@@ -19,27 +15,9 @@ The best documents put real data into their structure; the worst build a structu
 
 Short of content for the pages you were asked for? Give what you have more size: larger type, a bigger chart, one idea to a page. A box is as tall as what it holds; never stretch one to fill a page. A page may end early, and a quiet page can be a choice.
 
-## Page architectures
-
-- **Margin-note column:** the narrative in a wide column, figures and asides beside it.
-- **Ledger:** rows carry the content, columns are the attributes; the table is the page.
-- **Dossier:** short numbered sections with evidence attached to each.
-- **Catalogue:** one item per block, the same fields every time, an index at the end.
-- **Spread:** a large image or figure field against a column of text.
-- **Timetable or schedule:** time runs along one axis and organises everything.
-
 ## Your PDF attractors
 
 You reach for these without deciding to: a small label, a title and a top rule on every page; hairline rows for everything; one huge number leading the page; a row of three figures on the cover; rounded pill bars; three numbered blocks side by side; cream paper with one rust or green accent. Use one only when this document needs it, and say why in your `Direction:`.
-
-## Dials on a page
-
-- Shape: `border-radius` 0 to about 6mm; a sharp document has none anywhere.
-- Line: none, hairline `0.5pt` rules, or heavy `3pt` bars and full frames.
-- Ground: white, paper tint (`body { background }`), full colour fields; for a dark document put the dark colour on `body`.
-- Scale: body 9.5 to 11pt; display 28pt to 80pt.
-- Alignment: CSS grid columns (`grid-template-columns: 1fr 2fr`), offsets with `margin-inline-start`.
-- Density: generous `margin` and `padding` (airy) or tight leading and small gaps (analytical).
 
 ## Print techniques
 
@@ -49,6 +27,7 @@ You reach for these without deciding to: a small label, a title and a top rule o
 - Full-bleed page (a cover, a colour field): `@page cover { margin: 0; @bottom-left { content: none } @bottom-center { content: none } @bottom-right { content: none } }` and `section.cover { page: cover; break-after: page; height: var(--page-h); }`. This page has no footer, so keep it to a cover or a single field; to colour every page and keep the footer, set the colour on `body`.
 - Footer: the build's default is fine to keep. If this document wants its own, write it in your CSS: `@page { @bottom-left { content: "Room guide"; font-family: InstrumentSerif; border-top: none } @bottom-center { border-top: none } @bottom-right { content: counter(page); border-top: none } }`.
 - Charts: draw them with CSS (bars as `div`s with `width` or `height` in %) or inline SVG. Values start at zero. A bar's % height needs a parent with a set height. Keep text as HTML, not inside SVG, in Arabic. In a right-to-left document, flex and grid already run from the right; the first item must sit at the right.
+- Arabic lam-alef has two looks. Joined is the default and reads traditional and formal. `font-feature-settings: "rlig" 0` draws the letters apart, reads plainer, and makes text search and copy more reliable in Cairo, Tajawal and Rubik. Choose it for reference and data documents; keep joined for Amiri and Noto Naskh.
 
 ## Craft floor
 

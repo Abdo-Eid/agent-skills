@@ -36,7 +36,7 @@ Package versions below are the current image pins or scaffold-declared ranges. T
 | `zip`, `unzip` | All Office formats | Package inspection and source bundling |
 | LibreOffice Core, Writer, Calc, Impress | PPTX, XLSX, DOCX, artifact-taste preview | Headless compatibility, recalculation, and conversion to PDF for page previews |
 | `poppler-utils` | PDF, DOCX, artifact-taste preview | `pdftotext` for the Arabic text check and the DOCX contents page numbers; `pdftoppm` renders page images |
-| Chromium headless shell | PDF | Browser rendering |
+| Chromium headless shell | PDF, artifact-taste `image.cjs` | Browser rendering; drawn images for any format |
 | DejaVu, Liberation, Noto, Noto CJK, Noto Color Emoji fonts | All visual formats | Predictable multilingual rendering and fallbacks |
 
 ## PDF

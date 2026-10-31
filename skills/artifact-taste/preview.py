@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 """Render a PDF, PPTX, DOCX or XLSX to one PNG per page so you can look at it.
 
-Usage: preview.py <file> [--out DIR] [--dpi 90] [--max-pages 30]
+Usage: preview.py <file> [--out DIR]
 PDF pages are rendered with pdftoppm (poppler); office files are first converted to PDF by LibreOffice,
 each call with its own profile so parallel runs never collide. Writes page-NN.png and, if Pillow is
 available, sheet.png with all pages side by side. Prints one JSON line with the file list.
@@ -119,8 +119,6 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("file", type=Path)
     ap.add_argument("--out", type=Path)
-    ap.add_argument("--dpi", type=int, default=90)
-    ap.add_argument("--max-pages", type=int, default=30)
     a = ap.parse_args()
     source = a.file.resolve()
     if not source.exists():
@@ -132,7 +130,7 @@ def main() -> int:
     exe = shutil.which("pdftoppm")
     if not exe:
         sys.exit("FAIL pdftoppm (poppler-utils) not found")
-    subprocess.run([exe, "-r", str(a.dpi), "-l", str(a.max_pages), "-png", str(pdf), str(out / "page")],
+    subprocess.run([exe, "-r", "90", "-l", "30", "-png", str(pdf), str(out / "page")],
                    check=True, capture_output=True, timeout=240)
     pages = sorted(out.glob("page-*.png"))
     for p in pages:  # pdftoppm pads page numbers by page count; normalise to page-NN.png

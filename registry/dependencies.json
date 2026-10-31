@@ -27,6 +27,9 @@
       "python": [
         { "name": "Pillow", "version": "12.3.0", "purpose": "contact sheet in preview.py (page images still render without it)", "optional": true }
       ],
+      "node": [
+        { "name": "playwright", "version": "1.62.1", "purpose": "image.cjs renders an HTML or SVG file to a PNG, with the Chromium headless shell", "optional": true }
+      ],
       "system": ["poppler-utils", "libreoffice-core", "libreoffice-writer", "libreoffice-calc", "libreoffice-impress"]
     },
     "pdf": {

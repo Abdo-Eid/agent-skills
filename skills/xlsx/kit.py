@@ -46,17 +46,10 @@ def _rotate(hex_color: str, degrees: float) -> str:
 
 
 ALERT, ALERT_FILL = "#B42318", "#FDE7E4"
-# one hue from dark to faint: headers and charts stay in one family, and only an alert leaves it
-THEMES = {
-    "blue": {"deep": "#2F4157", "accent": "#567C8E", "mid": "#A2C1D1", "soft": "#C7D9E5", "pale": "#E3ECF2", "faint": "#F3F6F9"},
-    "green": {"deep": "#14453D", "accent": "#1F7A63", "mid": "#74B8A2", "soft": "#BFE0D3", "pale": "#E1F1EA", "faint": "#F3F9F6"},
-    "clay": {"deep": "#5A3A25", "accent": "#A8693E", "mid": "#D2A27C", "soft": "#E8CDB5", "pale": "#F4E7DB", "faint": "#FBF7F2"},
-    "plum": {"deep": "#3E2A5C", "accent": "#7558A6", "mid": "#AE97D1", "soft": "#D5C9E8", "pale": "#EDE7F5", "faint": "#F8F6FB"},
-}
 
 
 def _ramp(hex_color: str) -> dict:
-    """A theme grown from one colour."""
+    """One hue from dark to faint: headers and charts stay in one family, and only an alert leaves it."""
     r, g, b = [int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
     h, _, s = colorsys.rgb_to_hls(r, g, b)
     tone = lambda light, sat: "#" + "".join(f"{round(v * 255):02X}" for v in colorsys.hls_to_rgb(h, light, sat))
@@ -115,6 +108,18 @@ class Table:
         L = xl_col_to_name(self.c0 + self._idx(col))
         return f"{_quote(self.sheet.name)}!${L}${self.total_row + 1}"
 
+    def rule(self, col: int | str, op: str, value, cells: bool = False, **fmt) -> None:
+        """Format every data row (or only that column's cells with cells=True) whose `col` value passes a test:
+        t.rule("Margin", "<", 0), t.rule("Status", "=", "Late", bg_color="#FFF3CD"). op: < <= > >= = <>. Text is quoted for you.
+        Default format: the alert colours; any format options replace them. Rows follow edits, so it needs no helper column."""
+        j = self._idx(col)
+        L = xl_col_to_name(self.c0 + j)
+        v = f'"{value}"' if isinstance(value, str) and not value.startswith("=") else str(value).lstrip("=")
+        f = self.sheet.book.wb.add_format(fmt or {"bg_color": ALERT_FILL, "font_color": ALERT})
+        first = self.r0 + 1
+        c_a, c_z = (self.c0 + j, self.c0 + j) if cells else (self.c0, self.c0 + len(self.headers) - 1)
+        self.sheet.ws.conditional_format(first, c_a, first + self.n - 1, c_z, {"type": "formula", "criteria": f"=${L}{first + 1}{op}{v}", "format": f})
+
 
 class Sheet:
     def __init__(self, book: "Book", name: str, widths: list[float], grid: bool, fit: str | None):
@@ -127,7 +132,7 @@ class Sheet:
             self.ws.set_column(i, i, w)
         self.row_h: dict[int, float] = {}
         self.max_r = self.max_c = 0
-        self.formulas: list[tuple[str, str]] = []
+        self.formulas: dict[str, str] = {}  # address -> formula; a cell written twice counts once
         self.charts = 0
         self.freeze: str | None = None
         self.header_row: int | None = None
@@ -143,6 +148,7 @@ class Sheet:
         if role and ":" in role:
             role, nf = role.split(":", 1)
         is_formula = isinstance(value, str) and value.startswith("=")
+        addr = xl_rowcol_to_cell(r, c)
         is_date = isinstance(value, datetime.date)
         if role is None:
             if is_formula:
@@ -156,11 +162,11 @@ class Sheet:
         self.roles.add(role)
         fmt = self.book.fmt(role, nf, edge, **kw)
         if is_formula:
-            addr = xl_rowcol_to_cell(r, c)
             self.ws.write_formula(r, c, value, fmt, self.book.values.get(f"{self.name}!{addr}", 0))
-            self.formulas.append((addr, value))
+            self.formulas[addr] = value
         else:
             self.ws.write(r, c, value, fmt)
+            self.formulas.pop(addr, None)
         self._ext(r, c)
 
     def put(self, at: str, value, role: str | None = None, nf: str | None = None, **kw) -> None:
@@ -214,15 +220,18 @@ class Sheet:
 
     def table(self, at: str, headers: list[str], rows: list[list], fmts: list[str | None] | None = None,
               total: str | None = None, sums: list[int] | int = (), freeze: bool = True, filt: bool = False,
-              rh: float = 20, inputs: bool = True) -> Table:
+              rh: float = 20, inputs: bool = True, totals: dict | None = None) -> Table:
         """Header + data rows (+ total row). A string cell starting '=' is a formula; '{r}' is its row number, '{p}' the row above
         (not allowed in the first data row: pass a (first_row_cell, later_rows_cell) tuple instead).
         fmts[j]: money|money0|cents|int|dec|pct|date|year|text, or any Excel format; 'role:fmt' forces a role.
-        Plain numbers and dates are styled as inputs (blue); inputs=False styles them as plain data (raw/source tables)."""
+        Plain numbers and dates are styled as inputs (blue); inputs=False styles them as plain data (raw/source tables).
+        totals={col: formula} sets a total-row cell by formula (a ratio, a weighted mean): {r} is the total row, {a} the first and
+        {z} the last data row, e.g. {3: "=D{r}/C{r}", 4: "=SUMPRODUCT(B{a}:B{z},E{a}:E{z})/SUM(B{a}:B{z})"}."""
         r0, c0 = xl_cell_to_rowcol(at)
         n = len(headers)
         fmts = list(fmts or [None] * n)
         sums = [sums] if isinstance(sums, int) else list(sums)
+        totals = {(headers.index(k) if isinstance(k, str) else k): v for k, v in (totals or {}).items()}
         spec = [(f or "").split(":", 1)[-1] or None for f in fmts]
         if any(isinstance(v, (int, float)) and not isinstance(v, bool) and v != int(v) for row in rows for v in row):
             spec = ["cents" if s == "money" else s for s in spec]  # typed-in cents anywhere: all "money" columns show cents
@@ -259,6 +268,9 @@ class Sheet:
                     self._put(total_row, c0, total, "total", None, indent=1)
                 elif j in sums:
                     self._put(total_row, c0 + j, f"=SUM({L}{r0 + 2}:{L}{last + 1})", "total", spec[j])
+                elif j in totals:
+                    f = totals[j].replace("{r}", str(total_row + 1)).replace("{a}", str(r0 + 2)).replace("{z}", str(last + 1))
+                    self._put(total_row, c0 + j, f, "total", spec[j])
                 else:
                     self._put(total_row, c0 + j, "", "total", None)
         if freeze and self.freeze is None:
@@ -442,7 +454,7 @@ class Dash(Sheet):
         self.ws.insert_chart(row, col, chart, {"x_offset": 4, "y_offset": 3, "object_position": 2})
         self.charts += 1
 
-    def matrix(self, col, row, title, rows, cols, cell, nf="pct", label_nf=None, over=None, label_span=2):
+    def matrix(self, col, row, title, rows, cols, cell, nf="pct", over=None, label_span=2):
         """A heat table in a panel, one grid column per cell after the row labels: rows and cols are labels, cell(row_index, col_index)
         gives a value or formula. The fill deepens with the value; over=1 marks values above it in red."""
         ramp = self.book.ramp
@@ -453,7 +465,7 @@ class Dash(Sheet):
             self._text(row + 1, start + j, 1, h, bg_color="#FFFFFF", font_color=MUTED, bold=True, font_size=9, align="center", bottom=1, bottom_color=ramp["pale"], **self._gut(False, start + j == end))
         for i, name in enumerate(rows):
             r = row + 2 + i
-            self._text(r, col, label_span, name, label_nf, bg_color="#FFFFFF", bold=True, indent=1, **self._gut(True, False))
+            self._text(r, col, label_span, name, None, bg_color="#FFFFFF", bold=True, indent=1, **self._gut(True, False))
             for j in range(len(cols)):
                 self._text(r, start + j, 1, cell(i, j), nf, bg_color="#FFFFFF", align="center", **self._gut(False, start + j == end))
         first, last = row + 1, row + len(rows)
@@ -464,14 +476,11 @@ class Dash(Sheet):
 
 
 class Book:
-    def __init__(self, path: str, accent: str | None = None, footer: str | None = None, font: str = "Arial", rtl: bool = False, theme: str | None = None):
+    def __init__(self, path: str, accent: str | None = None, footer: str | None = None, font: str = "Arial", rtl: bool = False):
         self.rtl = bool(rtl)
-        if theme and theme not in THEMES:
-            raise ValueError(f"unknown theme {theme}: {' '.join(THEMES)}, or pass accent=")
-        if not theme and not accent:
-            raise ValueError(f'choose the colour of this workbook: Book(path, accent="#2F5D50") or Book(path, theme=...) ({" ".join(THEMES)})')
-        self.ramp = dict(THEMES[theme]) if theme else _ramp(accent)
-        accent = self.ramp["accent"]
+        if not accent:
+            raise ValueError('choose the colour of this workbook: Book(path, accent="#2F5D50")')
+        self.ramp = _ramp(accent)
         self.out = Path(path).resolve()
         self.out.parent.mkdir(parents=True, exist_ok=True)
         self.raw = self.out.with_name(f".{self.out.stem}.raw.xlsx")
@@ -531,11 +540,10 @@ class Book:
         return self._fmts[key]
 
     def chart(self, kind: str, title: str, cats: str, series: list[tuple], nf: str = "money0",
-              labels: bool | None = None, x_title: str | None = None, y_title: str | None = None,
-              y2_nf: str = "pct", cat_nf: str | None = None, y_min: float | None = None, legend: bool | None = None):
+              labels: bool | None = None, cat_nf: str | None = None, y_min: float | None = None, legend: bool | None = None):
         """kind: column|bar|line|area|pie|doughnut, optionally 'column:stacked'. series = [(name, values_ref[, opts])];
         cats/values come from Table.col(). Series opts {'as': 'line'} draws that series as a line on a secondary axis
-        (formatted y2_nf) over the columns. Pie/doughnut: one series, percentage labels, one colour per slice. labels: value
+        (as a percentage) over the columns. Pie/doughnut: one series, percentage labels, one colour per slice. labels: value
         labels, default on for a single column/bar series only. cat_nf: category-axis number format, default taken from a
         date-formatted table column ('date' shows 'mmm yy'; a custom date format is used as is)."""
         typ, _, sub = kind.partition(":")
@@ -571,11 +579,11 @@ class Book:
         chart.set_title({"name": title, "name_font": {"size": 12, "bold": True, "color": INK}})
         chart.set_chartarea({"border": {"none": True}})
         if not pie:
-            cat = {"num_font": {"size": 10, "color": INK}, "line": {"color": RULE}, "name": x_title}
+            cat = {"num_font": {"size": 10, "color": INK}, "line": {"color": RULE}, "label_position": "low"}  # below negative bars, not across them
             if cat_nf or cats.lstrip("=") in self.date_refs:
                 cat["num_format"] = cat_nf or self.date_refs[cats.lstrip("=")]
             val = {"num_format": nf_str, "num_font": {"size": 9, "color": MUTED}, "line": {"none": True},
-                   "major_gridlines": {"visible": True, "line": {"color": RULE, "width": 0.75}}, "name": y_title}
+                   "major_gridlines": {"visible": True, "line": {"color": RULE, "width": 0.75}}}
             if y_min is not None:
                 val["min"] = y_min
             if self.rtl:  # first category at the right, the value axis on the right, bars growing from the right
@@ -590,7 +598,7 @@ class Book:
                 chart.set_x_axis(cat)
                 chart.set_y_axis(val)
         if overlay:
-            overlay.set_y2_axis({"num_format": NF.get(y2_nf, y2_nf), "num_font": {"size": 9, "color": MUTED}, "line": {"none": True}})
+            overlay.set_y2_axis({"num_format": NF["pct"], "num_font": {"size": 9, "color": MUTED}, "line": {"none": True}})
             chart.combine(overlay)
         chart.set_legend({"position": "bottom", "font": {"size": 10}} if (many or pie if legend is None else legend) else {"none": True})
         return chart
@@ -609,7 +617,7 @@ class Book:
         book = load_workbook(calculated, data_only=True)
         values = {}
         for s in self.sheets:
-            for addr, _ in s.formulas:
+            for addr in s.formulas:
                 v = book[s.name][addr].value
                 if v is not None:
                     values[f"{s.name}!{addr}"] = to_excel(v) if hasattr(v, "isoformat") else v
@@ -641,7 +649,7 @@ class Book:
         else:
             self._recalc(self.out)
             self.raw.unlink(missing_ok=True)
-        formulas = [(s.name, a, f) for s in self.sheets for a, f in s.formulas]
+        formulas = [(s.name, a, f) for s in self.sheets for a, f in s.formulas.items()]
         contract = {
             "schemaVersion": 1,
             "exactSheets": [s.name for s in self.sheets],

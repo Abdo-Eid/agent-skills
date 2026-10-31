@@ -1,15 +1,16 @@
 # Copyright (c) 2026 Abdulhamed Samy Eid. All rights reserved.
 # SPDX-License-Identifier: LicenseRef-Proprietary
-"""One-call DOCX check: OOXML validation, style/table/footer audit, LibreOffice page count, page fill, expected text.
-Usage: python check.py file.docx [--pages N] [--expect "text" ...] [--text] [--fit "node src/build.cjs"]
-Exit 1 only for: invalid package, no real heading styles, typed bullets/leader dots, wrong page count, missing --expect text.
-The page-fill lines are information and never change the exit code. --expect ignores case, whitespace and quote/dash style.
+"""One-call DOCX check: OOXML validation, style/table/footer audit, LibreOffice page count, page fill.
+It does not compare the text with what you wrote: read that on the preview pages.
+Usage: python check.py file.docx [--pages N] [--text] [--fit "node src/build.cjs"]
+Exit 1 only for: invalid package, no real heading styles, typed bullets/leader dots, wrong page count.
+The page-fill lines are information and never change the exit code.
 --fit CMD (needs --pages N): re-runs CMD with DOCX_SPREAD=s (spacing only) until the file has N pages with a filled last page."""
-import argparse, os, re, shutil, subprocess, sys, tempfile, unicodedata, zipfile
+import argparse, os, re, shutil, subprocess, sys, tempfile, zipfile
 from pathlib import Path
 
 ap = argparse.ArgumentParser()
-ap.add_argument('docx'); ap.add_argument('--pages', type=int); ap.add_argument('--expect', nargs='*', default=[]); ap.add_argument('--text', action='store_true'); ap.add_argument('--fit')
+ap.add_argument('docx'); ap.add_argument('--pages', help='N, or a range A-B for a brief that says "about N"'); ap.add_argument('--text', action='store_true'); ap.add_argument('--fit')
 a = ap.parse_intermixed_args()
 bad = []
 
@@ -65,7 +66,9 @@ def fit(cmd, n):
 
 
 # 1. fit first (it rebuilds the file), then package validity and structure audit of the final file
-if a.fit and a.pages and SOFFICE: fit(a.fit, a.pages)
+if a.fit and a.pages and SOFFICE:
+    if a.pages.isdigit(): fit(a.fit, int(a.pages))
+    else: print('--fit needs an exact --pages N; skipped for a range')
 r = subprocess.run([sys.executable, str(Path(__file__).parent / 'scripts' / 'validate_ooxml.py'), 'docx', a.docx], capture_output=True, text=True)
 print('validate_ooxml:', (r.stdout or r.stderr).strip()[:200])
 if r.returncode: bad.append('OOXML invalid'); print('FAIL (exit 1): ' + '; '.join(bad)); sys.exit(1)
@@ -86,19 +89,12 @@ if SOFFICE:
     if not n: bad.append('LibreOffice could not convert')
     for i, f in enumerate(fills, 1): print(f'page {i}: body reaches {f:.0%} of page height')
     print(f'{n} pages')
-    if a.pages and n != a.pages: bad.append(f'expected {a.pages} pages, got {n} (--fit "<build command>" spreads spacing to a fixed count)')
+    lo, _, hi = (a.pages or '0').partition('-')
+    if a.pages and not (int(lo) <= n <= int(hi or lo)): bad.append(f'expected {a.pages} pages, got {n} (--fit "<build command>" spreads spacing to a fixed count)')
     low = [i for i, f in enumerate(fills, 1) if f < .7 and (i < n or n <= 3)]
     if low: print(f'note: page(s) {low} under 70% full (information only; exit code unaffected)')
 else:
     print('soffice not found: page part skipped')
 
-# 4. expected text: ignore case, whitespace, quote and dash style (letter-spaced or all-caps styles extract oddly)
-fold = lambda s: re.sub(r'\s+', '', unicodedata.normalize('NFKC', s).translate({0x2018: 39, 0x2019: 39, 0x201c: 34, 0x201d: 34, 0x2013: 45, 0x2014: 45, 0x2212: 45})).lower()
-for e in a.expect:
-    if not text or fold(e) in fold(text): continue
-    m = re.fullmatch(r'\s*Page\s+(\d+)\s+of\s+(\d+)\s*', e, re.I)
-    if m and fields and int(m[2]) != n: bad.append(f'{e!r}: page-number fields are live, this file has {n} pages, not {m[2]}')
-    elif m: bad.append(f'{e!r}: no such footer text (fields present: {fields})')
-    else: bad.append(f'missing text: {e!r}')
 if a.text: print('---\n' + text)
 print('FAIL (exit 1): ' + '; '.join(bad) if bad else 'OK (exit 0)'); sys.exit(1 if bad else 0)

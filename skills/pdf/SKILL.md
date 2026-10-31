@@ -29,7 +29,7 @@ Build it (locally with `CHROME_PATH=<chrome.exe>` set, and `NODE_PATH` as usual)
 node <skills-root>/pdf/build.cjs <project-root>/src/doc.html <project-root>/out/x.pdf --footer "Short title | Fictional"
 ```
 
-Options: `--footer`, `--header`, `--size A4|Letter`, `--margin 20` (mm, left and right; top and bottom are 24mm), `--digits arabic-indic`, `--lang`.
+Options: `--footer`, `--size A4|Letter`, `--margin 20` (mm, left and right; top and bottom are 24mm), `--digits arabic-indic`.
 
 ## What the build adds, so you do not write it
 
@@ -45,15 +45,14 @@ Print techniques for your CSS (page breaks, full-bleed pages, charts) are in `ar
 ## Check and look (every time)
 
 ```
-python <skills-root>/pdf/check.py <project-root>/out/x.pdf --pages 2 --expect "Page 2 of 2" "key figure" [--text]
+python <skills-root>/pdf/check.py <project-root>/out/x.pdf --pages 2 [--text]
 python <skills-root>/artifact-taste/preview.py <project-root>/out/x.pdf
 ```
-`check.py` opens the PDF strictly, counts pages, shows how far down each page is used, lists fonts and title, confirms the expected strings and exits 1 on failure. For Arabic it also confirms selectable letters in logical order and that all Arabic used a shipped font: pass Arabic phrases and the footer to `--expect`, e.g. `"صفحة 2 من 2"`. Then open the preview pages, fix what is wrong, rebuild.
+`check.py` opens the PDF strictly, counts pages, shows how far down each page is used, lists fonts and title, and exits 1 on failure. For Arabic it also confirms the letters are selectable and all in a shipped font. It does not compare the text with what you wrote: read your words on the preview pages. Some text readers, Poppler's `pdftotext` among them, swap the two letters of a ligature, so `--text` can show `عريب` for `عربي`: that is the reader, not your PDF, so leave it. Then open the preview pages, fix what is wrong, rebuild.
 
 ## Rules
 
 - Use only supplied facts and dates; label derived figures as derived and fictional scenarios as fictional. Do not invent sources.
-- No clipped or overlapping text, no remote files; images are local files.
 - Right-to-left: write text in logical order, never reversed or pre-shaped. Wrap a Latin phrase, email, code or number range inside Arabic in `<bdi dir="ltr">`. Flex and grid mirror by themselves; in a chart you draw, the first item sits at the right.
 - Eight or more pages: add a contents or overview page.
 - Continuation: edit `doc.html` and rebuild the same path. A document made earlier with a generator program: write its content into a new `doc.html`, keeping its look.

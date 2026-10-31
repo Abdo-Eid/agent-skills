@@ -43,7 +43,7 @@ const ELEMENTS = ['body', 'th', 'td', 'chart'];
 const PROPS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'color', 'lineHeight', 'letterSpacing', 'textTransform', 'textAlign', 'verticalAlign',
   'background', 'padding', 'border', 'borderTop', 'borderBottom', 'borderInlineStart', 'borderInlineEnd', 'borderRadius', 'opacity', 'composes', 'pptx'];
 const NOT_HERE = { display: 'lay boxes out with d.split, d.grid and d.stack', gridTemplateColumns: 'use d.grid(box, [2, 1])', flex: 'use d.split or d.stack', gap: 'pass gap to d.grid, d.split or d.stack',
-  margin: 'place the box with d.split, d.grid or d.inset', width: 'boxes come from d.page, d.split and d.grid', height: 'boxes come from d.page, d.split and d.grid', boxShadow: 'PowerPoint shapes here have no shadow option; use a darker border', backgroundImage: 'place an image with s.addImage' };
+  margin: 'place the box with d.split or d.grid', width: 'boxes come from d.page, d.split and d.grid', height: 'boxes come from d.page, d.split and d.grid', boxShadow: 'PowerPoint shapes here have no shadow option; use a darker border', backgroundImage: 'place an image with s.addImage' };
 const lev = (a, b) => { const d = Array.from({ length: b.length + 1 }, (_, i) => i); for (let i = 1; i <= a.length; i++) { let p = d[0]; d[0] = i; for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, p + (a[i - 1] === b[j - 1] ? 0 : 1)); p = t; } } return d[b.length]; };
 /** a length in points: 12 | '12pt' | '4mm' | '0.2in' | '16px' | '1.5em' (em needs the font size) */
 const pt = (v, em = 16) => { if (typeof v === 'number') return v; const m = String(v).trim().match(/^(-?[\d.]+)\s*(pt|mm|in|px|em|rem)?$/); if (!m) throw new Error(`style: not a length: ${v}`); const n = +m[1]; return { pt: n, mm: n * 72 / 25.4, in: n * 72, px: n * 0.75, em: n * em, rem: n * em }[m[2] || 'pt']; };
@@ -120,7 +120,6 @@ function deck(o = {}) {
   const th = (str, size, w, bold) => (lines(str, size, w, bold) * size * 1.2) / 72;
   // shrink font so a one-line string of n chars fits wIn inches
   const fit = (str, size, wIn) => Math.max(10, Math.min(size, Math.floor((wIn * 72) / (String(str).length * 0.58))));
-  const hb = () => !!F.headBold;
 
   // ---- compile resolved CSS props to PptxGenJS text options (and the shape/lines a box draws)
   const colour = (s, v) => {
@@ -253,17 +252,10 @@ function deck(o = {}) {
   }
   // one big number + label, filling its box; the value shrinks to stay on one line
   function stat(s, a) {
-    if (a.cls || a.labelCls) { // styled: the value in `cls` (its fontSize is the most it may grow to), the label in `labelCls`
-      const c = resolve(a.cls || []), vs = fit(a.value, c.fontSize !== undefined ? len(c.fontSize) : S.stat, a.w), vh = (vs * 1.15) / 72;
-      stext(s, String(a.value), a.cls || [], { x: a.x, y: a.y, w: a.w, h: vh, fontSize: vs, verticalAlign: 'bottom' });
-      stext(s, a.label, a.labelCls || [], { x: a.x, y: a.y + vh + 0.08, w: a.w, h: Math.max(0.4, (a.h || 1.5) - vh - 0.08) });
-      return;
-    }
-    const { x, y, w, h = 1.5, value, label, size = S.stat, color, muted, align = 'start' } = a;
-    const sz = fit(value, size, w), vh = (sz * 1.15) / 72, ls = sz >= 48 ? 18 : S.body;
-    const dy = a.center ? Math.max(0, (h - vh - 0.08 - th(label, ls, w)) * 0.4) : 0; // centre the group in a tall cell
-    raw(s, value, { x, y: y + dy, w, h: vh, font: 'stat', fontSize: sz, color: color || s.c.ink, align, valign: 'bottom', ...(hb() ? { bold: true } : {}) });
-    raw(s, label, { x, y: y + dy + vh + 0.08, w, h: Math.max(0.4, h - dy - vh - 0.08), fontSize: ls, color: muted || s.c.muted, align });
+    // the value in `cls` (its fontSize is the most it may grow to), the label in `labelCls`
+    const c = resolve(a.cls || []), vs = fit(a.value, c.fontSize !== undefined ? len(c.fontSize) : S.stat, a.w), vh = (vs * 1.15) / 72;
+    stext(s, String(a.value), a.cls || [], { x: a.x, y: a.y, w: a.w, h: vh, fontSize: vs, verticalAlign: 'bottom' });
+    stext(s, a.label, a.labelCls || [], { x: a.x, y: a.y + vh + 0.08, w: a.w, h: Math.max(0.4, (a.h || 1.5) - vh - 0.08) });
   }
   function panel(s, a) {
     const { x, y, w, h, fill = s.c.surface, bar } = a;
@@ -283,8 +275,14 @@ function deck(o = {}) {
     // th / td element styles: their text props, background as the cell fill, borderBottom as the row rule
     const el = (k) => { const c = elements[k] || {}; const { align: al, margin, transparency, ...t } = compile(s, c); return { t: { ...t, ...(al ? { align: al } : {}), ...(c.background ? { fill: { color: colour(s, c.background) } } : {}) }, b: c.borderBottom ? stroke(s, c.borderBottom) : null, up: c.textTransform }; };
     const TH = el('th'), TD = el('td');
-    const out = [rv(hd).map((t, i, arr) => ({ text: rtl || (TH.up && TH.up !== 'uppercase') ? t : t.toUpperCase(), options: { ...base, fontSize: S.small, bold: true, color: s.c.muted, border: TH.b ? line(TH.b.color, TH.b.width) : line(s.c.ink, 1.5), ...edge(i, arr.length), ...TH.t } }))];
-    rows.forEach((r) => out.push(rv(r).map((t, i, arr) => ({ text: t, options: { ...base, border: TD.b ? line(TD.b.color, TD.b.width) : line(s.c.rule, 0.75), ...edge(i, arr.length), ...(i === (rtl ? arr.length - 1 : 0) && !elements.td ? { fontFace: F.head, fontSize: S.h2 - 2, bold: !!F.headBold } : {}), ...TD.t } }))));
+    // align: ['left','right','right'] per column, written left-to-right like cols (mirrored when rtl). A cell may be {text, color, bold}.
+    const al = (j) => (a.align && a.align[j] ? { align: flip(a.align[j]) } : {});
+    const ix = (arr) => rv(arr.map((t, j) => [t, j]));
+    const out = [ix(hd).map(([t, j], i, arr) => ({ text: rtl || (TH.up && TH.up !== 'uppercase') ? t : t.toUpperCase(), options: { ...base, fontSize: S.small, bold: true, color: s.c.muted, border: TH.b ? line(TH.b.color, TH.b.width) : line(s.c.ink, 1.5), ...edge(i, arr.length), ...TH.t, ...al(j) } }))];
+    rows.forEach((r) => out.push(ix(r).map(([c, j], i, arr) => {
+      const o = c && typeof c === 'object' ? c : { text: c };
+      return { text: o.text, options: { ...base, border: TD.b ? line(TD.b.color, TD.b.width) : line(s.c.rule, 0.75), ...edge(i, arr.length), ...(i === (rtl ? arr.length - 1 : 0) && !elements.td ? { fontFace: F.head, fontSize: S.h2 - 2, bold: !!F.headBold } : {}), ...TD.t, ...al(j), ...(o.color ? { color: colour(s, o.color) } : {}), ...(o.bold ? { bold: true } : {}) } };
+    })));
     s.addTable(out, { x: X(x, w), y, w, colW, rowH: [hh, ...rows.map(() => rh)] });
   }
   // items: [{date, label, detail?, at?}] (at = 0..1 position, default evenly spaced). dir 'h' | 'v'.
@@ -342,7 +340,7 @@ function deck(o = {}) {
     labels = rv(labels);
     if (values) { values = rv(values); if (flipCols && hi !== undefined) hi = values.length - 1 - hi; }
     const ser = (series || [{ name, values }]).map((q) => ({ name: q.name, labels, values: series ? rv(q.values) : q.values }));
-    const top = Math.max(...ser.flatMap((q) => q.values));
+    const all = ser.flatMap((q) => q.values), top = Math.max(0, ...all), low = Math.min(0, ...all); // negative values draw below the zero line
     const ce = elements.chart ? compile(s, elements.chart) : {}; // chart element: label font, size and colour
     const cf = ce.fontFace || F.body, cz = ce.fontSize || size, ck = ce.color || s.c.ink;
     const cc = colors || (ser.length > 1 ? [s.c.accent, s.c.accent2, s.c.muted] : hi !== undefined ? values.map((_, i) => (i === hi ? s.c.accent : mix(s.c.bg, s.c.muted, 0.45))) : [s.c.accent]);
@@ -351,13 +349,12 @@ function deck(o = {}) {
       showValue: true, dataLabelFormatCode: fmt, dataLabelPosition: 'outEnd', dataLabelFontFace: cf, dataLabelFontSize: cz, dataLabelColor: ck,
       catAxisLabelFontFace: cf, catAxisLabelFontSize: cz, catAxisLabelColor: ck, catAxisLineShow: false,
       ...(dir === 'bar' ? { catAxisOrientation: 'maxMin', ...(rtl ? { valAxisOrientation: 'maxMin' } : {}) } : {}),
-      valAxisHidden: true, valAxisMinVal: 0, valAxisMaxVal: max || top * 1.18, catGridLine: { style: 'none' }, valGridLine: { style: 'none' },
+      valAxisHidden: true, valAxisMinVal: low * 1.35, valAxisMaxVal: max || top * 1.18, ...(low < 0 ? { catAxisLabelPos: 'low' } : {}), catGridLine: { style: 'none' }, valGridLine: { style: 'none' },
       showLegend: ser.length > 1, legendPos: 'b', legendFontFace: F.body, legendFontSize: 12, legendColor: s.c.ink,
     });
   }
   // ---- layout arithmetic: boxes are {x, y, w, h} in inches, written left-to-right (drawing mirrors for rtl)
   const page = () => ({ x: M, y: M, w: W - 2 * M, h: 6.65 - M }); // the area above the footer
-  const inset = (b, p = 0.3) => ({ x: b.x + p, y: b.y + p, w: b.w - 2 * p, h: b.h - 2 * p });
   // split a box at `at` (0..1 share, or inches if > 1) horizontally ('h': side by side) or vertically ('v': stacked)
   function split(b, at = 0.5, dir = 'h', gap = 0.4) {
     const len = dir === 'h' ? b.w : b.h, a = (at > 1 ? at : (len - gap) * at);
@@ -372,7 +369,7 @@ function deck(o = {}) {
   }
 
   return {
-    pptx, T: { ...LIGHT, fonts: F, S, W, H, M }, rtl, X, mix, fit, page, inset, split, grid,
+    pptx, T: { ...LIGHT, fonts: F, S, W, H, M }, rtl, X, mix, fit, page, split, grid,
     slide, text: stext, box, stack, rect, rule, line: drawLine, circle, stat, panel, table, timeline, bars,
     save: async (file) => {
       require('fs').mkdirSync(require('path').dirname(file), { recursive: true });

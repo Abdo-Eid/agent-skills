@@ -1,18 +1,18 @@
 # Copyright (c) 2026 Abdulhamed Samy Eid. All rights reserved.
 # SPDX-License-Identifier: LicenseRef-Proprietary
-"""One-call PDF check: opens it strictly, counts pages, reports how full each page is, lists fonts, checks expected text.
-For Arabic and other right-to-left PDFs it also confirms the text is real and selectable, in logical letter order,
+"""One-call PDF check: opens it strictly, counts pages, reports how full each page is, lists fonts.
+For Arabic and other right-to-left PDFs it also confirms the text is real and selectable,
 and that every Arabic glyph was set in one of the shipped Arabic fonts (<skills-root>/fonts).
-Usage: python check.py file.pdf [--pages N] [--expect "text" ...] [--text] [--rtl]   (exit 1 on any failure)"""
+It does not compare the text with what you wrote: read that on the preview pages.
+Usage: python check.py file.pdf [--pages N] [--text] [--rtl]   (exit 1 on any failure)"""
 import argparse, os, re, shutil, subprocess, sys, unicodedata
 from pypdf import PdfReader
 
 sys.stdout.reconfigure(encoding='utf-8')  # Windows consoles default to cp1252 and crash on Arabic
 AR = re.compile(r'[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]')
-FORMS = re.compile(r'[ﭐ-﷿ﹰ-﻿]')
 NOISE = re.compile(r'[‎‏‪-‮⁦-⁩ً-ْٰـ]')  # bidi marks, vowel marks, tatweel
 ap = argparse.ArgumentParser()
-ap.add_argument('pdf'); ap.add_argument('--expect', nargs='*', default=[]); ap.add_argument('--pages', type=int)
+ap.add_argument('pdf'); ap.add_argument('--pages', type=int)
 ap.add_argument('--text', action='store_true'); ap.add_argument('--rtl', action='store_true', help='require selectable Arabic text')
 a = ap.parse_args()
 bad = []
@@ -60,7 +60,7 @@ print(f'{n} pages, title={r.metadata.title if r.metadata else None!r}, fonts={so
 
 
 def extract():
-    """Logical-order text. pdftotext (poppler, in the image) honours the ActualText Chromium writes; pypdf does not."""
+    """Text for the Arabic checks. Readers differ in the details (Poppler swaps the letters inside a ligature, pypdf loses some words), so nothing here compares exact words."""
     exe = shutil.which('pdftotext')
     out = subprocess.run([exe, '-enc', 'UTF-8', a.pdf, '-'], capture_output=True).stdout.decode('utf-8', 'replace') if exe else ''
     return (out, 'pdftotext') if out.strip() else ('\n'.join(alltext), 'pypdf')
@@ -68,24 +68,13 @@ def extract():
 
 raw, how = extract()
 full = NOISE.sub('', unicodedata.normalize('NFKC', raw))  # NFKC turns the presentation forms Chromium maps glyphs to back into base letters
-flat_full = re.sub(r'\s+', '', full)  # some fonts leave stray spaces inside words in extraction
 n_ar = len(AR.findall(full))
-if n_ar or a.rtl or any(AR.search(e) for e in a.expect):
-    words = [w for w in full.split() if AR.search(w)]
-    print(f'arabic ({how}): {n_ar} letters, {len(words)} words, fonts used for Arabic={sorted(ar_fonts)}, raw presentation-form code points={len(FORMS.findall(raw))}')
+if n_ar or a.rtl:
+    print(f'arabic ({how}): fonts used for Arabic={sorted(ar_fonts)}')
     if not n_ar: bad.append('no selectable Arabic text in the PDF (outlined, rasterised or drawn with a font that has no Arabic map)')
     elif 'reportlab' in str((r.metadata or {}).get('/Producer', '')).lower(): bad.append('made with ReportLab, which cannot join or reorder Arabic: build it with build.cjs instead')
     else:
         outside = [f for f in ar_fonts if not any(flat(f).startswith(fam) for fam in families)]
         if families and outside: bad.append(f'Arabic set in {outside}, not a shipped Arabic font: the @font-face did not load (check the file URL) or the font fell back')
-        pre = sum(w.startswith('ال') for w in words); suf = sum(w.endswith('لا') and not w.startswith('ال') for w in words)
-        if suf > pre: bad.append('Arabic letters look reversed (many words end in lam-alef instead of starting with alef-lam): text was reordered before it reached the PDF')
-for e in a.expect:
-    if AR.search(e):  # whole phrase in logical order, else word by word (table cells and columns can interleave)
-        ce = NOISE.sub('', unicodedata.normalize('NFKC', e))
-        if re.sub(r'\s+', '', ce) in flat_full: continue
-        for w in ce.split():
-            if w not in flat_full: bad.append(f'missing Arabic word {w!r} from {e!r}' + (' (found reversed)' if w[::-1] in flat_full else ''))
-    elif ' '.join(e.split()).casefold() not in ' '.join(full.split()).casefold(): bad.append(f'missing text: {e!r}')  # casefold: CSS uppercase changes the text in the PDF
 if a.text: print('---\n' + full)
 print('FAIL: ' + '; '.join(bad) if bad else 'OK'); sys.exit(1 if bad else 0)

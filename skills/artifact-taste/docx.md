@@ -22,18 +22,9 @@ Readers of a genre expect its conventions; break them only on purpose.
 - Lists for steps and sets, prose for argument; no random bold, no fake headings made of bold text.
 - Define a class once for each recurring role (an abstract, a theorem, a reference entry); Word users can then restyle the whole document from the gallery.
 
-## Your Word attractors
-
-A coloured title with a rule under it; a tinted box in every section; a row of figure tiles at the top; every heading in the accent colour. Use them only when the content asks.
-
 ## Dials that apply here
 
-- Type voice: the heading and body faces and the contrast between them.
-- Contrast: heading colour against body colour; how dark the table header is.
-- Line: no rules, a rule under the title, rules between sections.
-- Density: body size, line spacing and paragraph spacing.
-
-Shape, ground, alignment and colour fields do not apply to Word. In a thesis, book or legal document, the genre outranks the dials: pick the look that sits best with its conventions and apply it inside them.
+In a thesis, book or legal document, the genre outranks the dials: pick the look that sits best with its conventions and apply it inside them.
 
 ## Craft floor
 

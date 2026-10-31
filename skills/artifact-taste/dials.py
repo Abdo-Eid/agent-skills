@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 """Deal three far-apart looks for one document; the agent picks one, so the look does not come from the model's habits.
 
-Usage: dials.py <format> "<one line: the subject and what the document is for>" [--seed TEXT] [--rtl]
-The deal is deterministic: the same subject line (and seed) gives the same three looks, different documents get
+Usage: dials.py <format> "<one line: the subject and what the document is for>" [--rtl]
+The deal is deterministic: the same subject line gives the same three looks, different documents get
 different ones. Prints every dial with a concrete setting for the format and a Dials line to copy for each look.
 Pick by the subject and build the pick; change at most one dial, for a reason that comes from the subject.
 A requirement in the brief or a client's brand overrides any dial and does not count as a change.
@@ -96,19 +96,18 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("format", choices=sorted(APPLIES))
     ap.add_argument("subject")
-    ap.add_argument("--seed", default="")
     ap.add_argument("--rtl", action="store_true", help="the document is right to left")
     a = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     if len(a.subject.split()) < 4:
         sys.exit("FAIL give one real line about the subject and the document's purpose (at least four words)")
-    hands = hand(a.format, a.subject, a.seed, a.rtl or bool(re.search(r"[֐-ࣿ]", a.subject)))
+    hands = hand(a.format, a.subject, "", a.rtl or bool(re.search(r"[֐-ࣿ]", a.subject)))
     print(f"Three looks for this {a.format} ({a.subject}):")
     lines = []
     for letter, dealt in zip("ABC", hands):
         print(f"\n{letter}")
         short = []
-        start = accent(a.format, a.subject, f"{a.seed}|{letter}", dealt["temperature"])
+        start = accent(a.format, a.subject, f"|{letter}", dealt["temperature"])
         for name, pos in dealt.items():
             extra = VALUES.get(a.format, {}).get(name)
             if name == "temperature":

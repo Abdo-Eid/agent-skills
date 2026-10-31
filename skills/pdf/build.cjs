@@ -4,7 +4,7 @@
 // Print your own HTML file to PDF with Chromium, adding only what HTML cannot do for print by itself:
 // shipped fonts, @page size and margins, the footer with "Page N of M", language and direction, and Arabic
 // letters always in a shipped Arabic face. Your CSS loads after all of this, so it always wins.
-// Usage: node build.cjs doc.html out/doc.pdf [--footer "text"] [--header "text"] [--size A4|Letter] [--margin 20] [--lang ar] [--digits arabic-indic]
+// Usage: node build.cjs doc.html out/doc.pdf [--footer "text"] [--size A4|Letter] [--margin 20] [--digits arabic-indic]
 'use strict';
 const fs = require('fs'), path = require('path');
 const { pathToFileURL } = require('url');
@@ -46,7 +46,7 @@ function footerInk(paper) {
 }
 
 /** Everything the page needs before the author's CSS: low precedence by position, first in <head>. */
-function kitCss({ lang, rtl, size, margin, footer, header, digits, title, paper }) {
+function kitCss({ lang, rtl, size, margin, footer, digits, title, paper }) {
   const [W, H] = SIZES[size], st = rtl ? 'right' : 'left', en = rtl ? 'left' : 'right';
   const [lp, lo] = LABELS[lang] || LABELS[String(lang).split('-')[0]] || LABELS.en;
   const fmt = digits ? `, ${digits}` : '';
@@ -59,8 +59,7 @@ function kitCss({ lang, rtl, size, margin, footer, header, digits, title, paper 
 @page{size:${W}mm ${H}mm;margin:${MT}mm ${margin}mm ${MB}mm;${paper ? `background:${paper};` : ''}
 ${box(`bottom-${st}`, `content:${css(footer || title)};text-align:${st};white-space:nowrap;${hairline}`)}
 ${box('bottom-center', `content:"";${hairline}`)}
-${box(`bottom-${en}`, `content:${css(lp + ' ')} counter(page${fmt}) ${css(' ' + lo + ' ')} counter(pages${fmt});text-align:${en};${hairline}`)}
-${header ? box(`top-${en}`, `content:${css(header)};text-align:${en};vertical-align:bottom;padding-bottom:5mm;`) : ''}}
+${box(`bottom-${en}`, `content:${css(lp + ' ')} counter(page${fmt}) ${css(' ' + lo + ' ')} counter(pages${fmt});text-align:${en};${hairline}`)}}
 :root{--page-w:${W}mm;--page-h:${H}mm;--content-w:${W - 2 * margin}mm;--content-h:${H - MT - MB}mm}
 *{box-sizing:border-box}
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-synthesis:none}
@@ -80,7 +79,7 @@ function args(argv) {
 
 async function main() {
   const { pos, o } = args(process.argv.slice(2));
-  if (pos.length !== 2) throw new Error('usage: node build.cjs doc.html out/doc.pdf [--footer "text"] [--header "text"] [--size A4|Letter] [--margin 20] [--lang ar] [--digits arabic-indic]');
+  if (pos.length !== 2) throw new Error('usage: node build.cjs doc.html out/doc.pdf [--footer "text"] [--size A4|Letter] [--margin 20] [--digits arabic-indic]');
   const [src, file] = pos.map((p) => path.resolve(p));
   if (!fs.existsSync(src)) throw new Error(`no such file: ${src}`);
   const size = o.size || 'A4', margin = +(o.margin || 20);
@@ -103,13 +102,13 @@ async function main() {
     await page.goto(pathToFileURL(src).href);
     blocked.forEach((u) => warn(`remote file not loaded, use a local file: ${u}`));
 
-    // language and direction: from the file, a flag overrides; a mostly Arabic file with neither is set to Arabic
+    // language and direction: from the file; a mostly Arabic file with neither is set to Arabic
     const meta = await page.evaluate(() => {
       const t = document.body ? document.body.innerText : '';
       const ar = (t.match(/[\u0600-\u06FF]/g) || []).length, la = (t.match(/[A-Za-z]/g) || []).length;
       return { lang: document.documentElement.lang, dir: document.documentElement.dir, title: document.title, mostlyArabic: ar > la };
     });
-    let lang = o.lang || meta.lang;
+    let lang = meta.lang;
     if (!lang) { lang = meta.mostlyArabic ? 'ar' : 'en'; if (meta.mostlyArabic) warn('no lang on <html>: treated as Arabic; write <html lang="ar" dir="rtl">'); }
     const rtl = meta.dir ? meta.dir === 'rtl' : RTL.includes(String(lang).split('-')[0]);
     const title = meta.title || path.basename(src, path.extname(src));
@@ -147,7 +146,7 @@ async function main() {
         if (cs.letterSpacing !== 'normal' && parseFloat(cs.letterSpacing) !== 0) { el.style.letterSpacing = 'normal'; spaced++; }
       }
       return { spaced };
-    }, { kit: kitCss({ lang, rtl, size, margin, footer: o.footer, header: o.header, digits: o.digits, title, paper }), lang, rtl, icons: ICONS, ALIAS, shipped });
+    }, { kit: kitCss({ lang, rtl, size, margin, footer: o.footer, digits: o.digits, title, paper }), lang, rtl, icons: ICONS, ALIAS, shipped });
     if (report.spaced) warn(`letter-spacing removed from ${report.spaced} Arabic text runs (it breaks letter joining)`);
     // Chromium loads a font only when page content uses it, and margin boxes do not count: load every face, or a footer
     // in a font the body does not use prints blank or in Times. Only the glyphs actually printed reach the PDF.

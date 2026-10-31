@@ -1,6 +1,6 @@
 # Real-data workbooks (CSV cleaning, EDA, shortlists)
 
-Profile the input first (`references/read-analyze.md`: schema, row count, nulls, sentinels, key uniqueness, categories, units). Then build with `kit.py`; `templates/generate_data_workbook.py` is a worked raw/cleaned/shortlist/dictionary example to read, not to copy.
+Profile the input first (`references/read-analyze.md`: schema, row count, nulls, sentinels, key uniqueness, categories, units). Then build with `kit.py`; `templates/generate_data_workbook.py` is a worked overview/raw/cleaned/profile example to read, not to copy.
 
 ## Structure
 
