@@ -1,6 +1,6 @@
 ---
 name: docx
-description: Create editable Word documents, from memos to theses and books, with the docx package through a small kit: a CSS-like stylesheet compiled to real Word styles, native heading numbering, footnotes, equations from TeX, numbered captions and cross-references, sections with their own page numbering, a contents page, and RTL. Check them in one call.
+description: "Create editable Word documents, from memos to theses and books, with the docx package through a small kit: a CSS-like stylesheet compiled to real Word styles, native heading numbering, footnotes, equations from TeX, numbered captions and cross-references, sections with their own page numbering, a contents page, and RTL. Check them in one call."
 license: Proprietary; see the repository-root LICENSE.
 ---
 
